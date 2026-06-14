@@ -46,10 +46,14 @@ export default function CardEditorPage() {
   const cardLinks = existingCard ? getCardLinks(existingCard.id) : { outgoing: [], incoming: [] };
 
   useEffect(() => {
-    if (!isNew && card) {
-      startReading(card.id);
-    }
+    let cancelled = false;
+    (async () => {
+      if (!isNew && card && !cancelled) {
+        await startReading(card.id);
+      }
+    })();
     return () => {
+      cancelled = true;
       endReading();
     };
   }, [id, card, startReading, endReading, isNew]);

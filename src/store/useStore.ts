@@ -52,7 +52,7 @@ interface StoreState {
   getCardLinks: (cardId: string) => { outgoing: Link[]; incoming: Link[] };
   suggestLinks: (content: string) => Promise<LinkSuggestion[]>;
 
-  startReading: (cardId: string, fromCardId?: string) => void;
+  startReading: (cardId: string, fromCardId?: string) => Promise<void>;
   endReading: () => Promise<void>;
   getReadingHeatmap: () => Map<string, number>;
 
@@ -281,10 +281,10 @@ export const useStore = create<StoreState>((set, get) => ({
     return suggestions;
   },
 
-  startReading: (cardId, fromCardId) => {
+  startReading: async (cardId, fromCardId) => {
     const { currentReadingSession, endReading } = get();
     if (currentReadingSession) {
-      endReading();
+      await endReading();
     }
     set({
       currentReadingSession: {

@@ -47,6 +47,16 @@ export interface ReviewHistory {
   newInterval: number;
 }
 
+export interface CardVersion {
+  id: string;
+  cardId: string;
+  title: string;
+  content: string;
+  tags: string[];
+  createdAt: Date;
+  size: number;
+}
+
 export interface GraphNode {
   id: string;
   name: string;

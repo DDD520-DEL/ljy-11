@@ -10,6 +10,7 @@ import {
   GraphLink,
   LinkSuggestion,
   TagStats,
+  CardVersion,
 } from '../types';
 import { db } from '../db';
 import {
@@ -29,6 +30,7 @@ interface StoreState {
   readingRecords: ReadingRecord[];
   importSources: ImportSource[];
   reviewHistories: ReviewHistory[];
+  cardVersions: CardVersion[];
   currentCardId: string | null;
   isLoading: boolean;
   selectedTags: string[];
@@ -47,6 +49,10 @@ interface StoreState {
   setCurrentCardId: (id: string | null) => void;
   setSelectedTags: (tags: string[]) => void;
   setSearchQuery: (query: string) => void;
+
+  saveCardVersion: (cardId: string, card: Card) => Promise<void>;
+  getCardVersions: (cardId: string) => CardVersion[];
+  restoreCardVersion: (cardId: string, versionId: string) => Promise<void>;
 
   createLink: (sourceId: string, targetId: string) => Promise<void>;
   deleteLink: (linkId: string) => Promise<void>;
@@ -90,6 +96,7 @@ export const useStore = create<StoreState>((set, get) => ({
   readingRecords: [],
   importSources: [],
   reviewHistories: [],
+  cardVersions: [],
   currentCardId: null,
   isLoading: true,
   selectedTags: [],
@@ -110,13 +117,14 @@ export const useStore = create<StoreState>((set, get) => ({
 
   loadAllData: async () => {
     set({ isLoading: true });
-    const [cards, links, readingRecords, importSources, reviewHistories] =
+    const [cards, links, readingRecords, importSources, reviewHistories, cardVersions] =
       await Promise.all([
         db.cards.orderBy('updatedAt').reverse().toArray(),
         db.links.toArray(),
         db.readingRecords.orderBy('startTime').reverse().toArray(),
         db.importSources.orderBy('importedAt').reverse().toArray(),
         db.reviewHistories.toArray(),
+        db.cardVersions.orderBy('createdAt').reverse().toArray(),
       ]);
     set({
       cards,
@@ -124,6 +132,7 @@ export const useStore = create<StoreState>((set, get) => ({
       readingRecords,
       importSources,
       reviewHistories,
+      cardVersions,
       isLoading: false,
     });
   },
@@ -163,6 +172,8 @@ export const useStore = create<StoreState>((set, get) => ({
     const card = await db.cards.get(id);
     if (!card) return;
 
+    await get().saveCardVersion(id, card);
+
     const updatedCard = {
       ...card,
       ...updates,
@@ -198,7 +209,7 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   deleteCard: async (id) => {
-    await db.transaction('rw', db.cards, db.links, async () => {
+    await db.transaction('rw', db.cards, db.links, db.cardVersions, async () => {
       await db.cards.delete(id);
       await db.links
         .where('sourceCardId')
@@ -206,6 +217,7 @@ export const useStore = create<StoreState>((set, get) => ({
         .or('targetCardId')
         .equals(id)
         .delete();
+      await db.cardVersions.where('cardId').equals(id).delete();
     });
     await get().loadAllData();
   },
@@ -213,6 +225,74 @@ export const useStore = create<StoreState>((set, get) => ({
   setCurrentCardId: (id) => set({ currentCardId: id }),
   setSelectedTags: (tags) => set({ selectedTags: tags }),
   setSearchQuery: (query) => set({ searchQuery: query }),
+
+  saveCardVersion: async (cardId, card) => {
+    const size =
+      new Blob([card.title + card.content + card.tags.join(',')]).size;
+
+    const existingVersions = await db.cardVersions
+      .where('cardId')
+      .equals(cardId)
+      .sortBy('createdAt');
+
+    const lastVersion = existingVersions[existingVersions.length - 1];
+    if (
+      lastVersion &&
+      lastVersion.title === card.title &&
+      lastVersion.content === card.content &&
+      JSON.stringify(lastVersion.tags) === JSON.stringify(card.tags)
+    ) {
+      return;
+    }
+
+    const version: CardVersion = {
+      id: generateId(),
+      cardId,
+      title: card.title,
+      content: card.content,
+      tags: card.tags,
+      createdAt: new Date(),
+      size,
+    };
+
+    await db.cardVersions.add(version);
+
+    const allVersions = await db.cardVersions
+      .where('cardId')
+      .equals(cardId)
+      .sortBy('createdAt');
+
+    if (allVersions.length > 20) {
+      const toDelete = allVersions.slice(0, allVersions.length - 20);
+      await db.cardVersions.bulkDelete(toDelete.map((v) => v.id));
+    }
+  },
+
+  getCardVersions: (cardId) => {
+    const { cardVersions } = get();
+    return cardVersions
+      .filter((v) => v.cardId === cardId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+
+  restoreCardVersion: async (cardId, versionId) => {
+    const version = await db.cardVersions.get(versionId);
+    if (!version || version.cardId !== cardId) return;
+
+    const currentCard = await db.cards.get(cardId);
+    if (!currentCard) return;
+
+    await get().saveCardVersion(cardId, currentCard);
+
+    await db.cards.update(cardId, {
+      title: version.title,
+      content: version.content,
+      tags: version.tags,
+      updatedAt: new Date(),
+    });
+
+    await get().loadAllData();
+  },
 
   createLink: async (sourceId, targetId) => {
     if (sourceId === targetId) return;

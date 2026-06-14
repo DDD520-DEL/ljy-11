@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { MarkdownViewer } from '../components/MarkdownViewer';
+import CardVersionHistory from '../components/CardVersionHistory';
 import { LinkSuggestion } from '../types';
 
 export default function CardEditorPage() {
@@ -30,6 +31,8 @@ export default function CardEditorPage() {
     createLink,
     startReading,
     endReading,
+    getCardVersions,
+    restoreCardVersion,
   } = useStore();
 
   const card = !isNew ? cards.find((c) => c.id === id) : null;
@@ -44,8 +47,20 @@ export default function CardEditorPage() {
 
   const existingCard = !isNew ? cards.find((c) => c.id === id) : null;
   const cardLinks = existingCard ? getCardLinks(existingCard.id) : { outgoing: [], incoming: [] };
+  const versions = !isNew && id ? getCardVersions(id) : [];
 
   const pendingEndRef = useRef<Promise<void> | null>(null);
+
+  const handleRestore = async (versionId: string) => {
+    if (!id) return;
+    await restoreCardVersion(id, versionId);
+    const updatedCard = cards.find((c) => c.id === id);
+    if (updatedCard) {
+      setTitle(updatedCard.title);
+      setContent(updatedCard.content);
+      setTags(updatedCard.tags);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -429,6 +444,16 @@ export default function CardEditorPage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {!isNew && (
+            <CardVersionHistory
+              versions={versions}
+              currentTitle={title}
+              currentContent={content}
+              currentTags={tags}
+              onRestore={handleRestore}
+            />
           )}
         </motion.div>
       </div>

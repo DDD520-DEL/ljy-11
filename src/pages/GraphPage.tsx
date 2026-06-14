@@ -21,7 +21,7 @@ import { GraphData, GraphNode } from '../types';
 export default function GraphPage() {
   const navigate = useNavigate();
   const graphRef = useRef<ForceGraphMethods>();
-  const { getGraphData, cards } = useStore();
+  const { getGraphData, cards, activeSpaceId, knowledgeSpaces } = useStore();
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -257,6 +257,11 @@ export default function GraphPage() {
           </h1>
           <p className="text-white/60">
             可视化展示知识节点间的关联网络
+            {activeSpaceId && knowledgeSpaces.find((s) => s.id === activeSpaceId) && (
+              <span className="ml-2 text-amber-gold">
+                · {knowledgeSpaces.find((s) => s.id === activeSpaceId)!.icon} {knowledgeSpaces.find((s) => s.id === activeSpaceId)!.name}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">

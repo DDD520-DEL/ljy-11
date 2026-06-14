@@ -27,7 +27,7 @@ const ratingLabels: Record<ReviewRating, { label: string; color: string; descrip
 };
 
 export default function ReviewPage() {
-  const { getReviewQueue, submitReview, cards, links } = useStore();
+  const { getReviewQueue, submitReview, cards, links, activeSpaceId, knowledgeSpaces } = useStore();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [completedToday, setCompletedToday] = useState(0);
@@ -121,6 +121,11 @@ export default function ReviewPage() {
           </h1>
           <p className="text-white/60">
             基于间隔重复算法，智能推荐复习内容
+            {activeSpaceId && knowledgeSpaces.find((s) => s.id === activeSpaceId) && (
+              <span className="ml-2 text-amber-gold">
+                · {knowledgeSpaces.find((s) => s.id === activeSpaceId)!.icon} {knowledgeSpaces.find((s) => s.id === activeSpaceId)!.name}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-4">

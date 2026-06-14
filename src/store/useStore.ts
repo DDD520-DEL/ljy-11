@@ -16,6 +16,7 @@ import {
   AchievementType,
   WeeklyReport,
   CardTemplate,
+  KnowledgeSpace,
 } from '../types';
 import { db } from '../db';
 import {
@@ -54,6 +55,8 @@ interface StoreState {
   } | null;
   newlyUnlockedAchievements: Achievement[];
   cardTemplates: CardTemplate[];
+  knowledgeSpaces: KnowledgeSpace[];
+  activeSpaceId: string | null;
 
   initializeData: () => Promise<void>;
   loadAllData: () => Promise<void>;
@@ -112,6 +115,13 @@ interface StoreState {
 
   toggleFavorite: (cardId: string) => Promise<void>;
   getFavoriteCards: () => Card[];
+
+  setActiveSpaceId: (spaceId: string | null) => void;
+  createSpace: (space: Partial<KnowledgeSpace>) => Promise<KnowledgeSpace>;
+  updateSpace: (id: string, updates: Partial<KnowledgeSpace>) => Promise<void>;
+  deleteSpace: (id: string) => Promise<void>;
+  moveCardToSpace: (cardId: string, spaceId: string | null) => Promise<void>;
+  getCardsBySpace: (spaceId: string | null) => Card[];
 }
 
 const generateId = () =>
@@ -132,6 +142,8 @@ export const useStore = create<StoreState>((set, get) => ({
   currentReadingSession: null,
   newlyUnlockedAchievements: [],
   cardTemplates: [],
+  knowledgeSpaces: [],
+  activeSpaceId: null,
 
   initializeData: async () => {
     const cards = await db.cards.count();
@@ -147,7 +159,7 @@ export const useStore = create<StoreState>((set, get) => ({
 
   loadAllData: async () => {
     set({ isLoading: true });
-    const [cards, links, readingRecords, importSources, reviewHistories, cardVersions, achievements, cardTemplates] =
+    const [cards, links, readingRecords, importSources, reviewHistories, cardVersions, achievements, cardTemplates, knowledgeSpaces] =
       await Promise.all([
         db.cards.orderBy('updatedAt').reverse().toArray(),
         db.links.toArray(),
@@ -157,6 +169,7 @@ export const useStore = create<StoreState>((set, get) => ({
         db.cardVersions.orderBy('createdAt').reverse().toArray(),
         db.achievements.orderBy('unlockedAt').reverse().toArray(),
         db.cardTemplates.orderBy('updatedAt').reverse().toArray(),
+        db.knowledgeSpaces.orderBy('updatedAt').reverse().toArray(),
       ]);
     set({
       cards,
@@ -167,12 +180,14 @@ export const useStore = create<StoreState>((set, get) => ({
       cardVersions,
       achievements,
       cardTemplates,
+      knowledgeSpaces,
       isLoading: false,
     });
   },
 
   createCard: async (partialCard) => {
     const now = new Date();
+    const { activeSpaceId } = get();
     const newCard: Card = {
       id: generateId(),
       title: partialCard.title || '未命名卡片',
@@ -184,6 +199,7 @@ export const useStore = create<StoreState>((set, get) => ({
       easeFactor: 2.5,
       reviewCount: 0,
       isFavorite: false,
+      spaceId: partialCard.spaceId !== undefined ? partialCard.spaceId : (activeSpaceId || undefined),
     };
 
     await db.cards.add(newCard);
@@ -495,10 +511,15 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   getReviewQueue: () => {
-    const { cards, links } = get();
+    const { cards, links, activeSpaceId } = get();
     const now = new Date();
 
-    return cards
+    let filteredCards = cards;
+    if (activeSpaceId) {
+      filteredCards = cards.filter((c) => c.spaceId === activeSpaceId);
+    }
+
+    return filteredCards
       .filter((card) => {
         if (!card.lastReviewedAt) return true;
         const daysSinceReview =
@@ -629,7 +650,12 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   getGraphData: () => {
-    const { cards, links } = get();
+    const { cards, links, activeSpaceId } = get();
+
+    let filteredCards = cards;
+    if (activeSpaceId) {
+      filteredCards = cards.filter((c) => c.spaceId === activeSpaceId);
+    }
 
     const tagColors = [
       '#f59e0b',
@@ -642,12 +668,12 @@ export const useStore = create<StoreState>((set, get) => ({
       '#f97316',
     ];
 
-    const allTags = new Set(cards.flatMap((c) => c.tags));
+    const allTags = new Set(filteredCards.flatMap((c) => c.tags));
     const tagColorMap = new Map(
       Array.from(allTags).map((tag, i) => [tag, tagColors[i % tagColors.length]])
     );
 
-    const nodes: GraphNode[] = cards.map((card) => {
+    const nodes: GraphNode[] = filteredCards.map((card) => {
       const cardLinks = links.filter(
         (l) => l.sourceCardId === card.id || l.targetCardId === card.id
       );
@@ -657,7 +683,7 @@ export const useStore = create<StoreState>((set, get) => ({
         card.id,
         outgoingLinks.map((l) => l.targetCardId),
         incomingLinks.map((l) => l.sourceCardId),
-        cards.length
+        filteredCards.length
       );
       const priority = calculateReviewPriority(card, density, new Date());
 
@@ -672,11 +698,14 @@ export const useStore = create<StoreState>((set, get) => ({
       };
     });
 
-    const graphLinks: GraphLink[] = links.map((link) => ({
-      source: link.sourceCardId,
-      target: link.targetCardId,
-      value: 1,
-    }));
+    const nodeIds = new Set(nodes.map((n) => n.id));
+    const graphLinks: GraphLink[] = links
+      .filter((l) => nodeIds.has(l.sourceCardId) && nodeIds.has(l.targetCardId))
+      .map((link) => ({
+        source: link.sourceCardId,
+        target: link.targetCardId,
+        value: 1,
+      }));
 
     return { nodes, links: graphLinks };
   },
@@ -1148,5 +1177,66 @@ export const useStore = create<StoreState>((set, get) => ({
     return cards
       .filter((c) => c.isFavorite)
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  },
+
+  setActiveSpaceId: (spaceId) => set({ activeSpaceId: spaceId }),
+
+  createSpace: async (partialSpace) => {
+    const now = new Date();
+    const newSpace: KnowledgeSpace = {
+      id: generateId(),
+      name: partialSpace.name || '未命名空间',
+      description: partialSpace.description || '',
+      icon: partialSpace.icon || '📁',
+      color: partialSpace.color || '#f59e0b',
+      createdAt: now,
+      updatedAt: now,
+    };
+    await db.knowledgeSpaces.add(newSpace);
+    await get().loadAllData();
+    return newSpace;
+  },
+
+  updateSpace: async (id, updates) => {
+    const space = await db.knowledgeSpaces.get(id);
+    if (!space) return;
+    const updatedSpace = {
+      ...space,
+      ...updates,
+      updatedAt: new Date(),
+    };
+    await db.knowledgeSpaces.update(id, updatedSpace);
+    await get().loadAllData();
+  },
+
+  deleteSpace: async (id) => {
+    const { activeSpaceId } = get();
+    await db.transaction('rw', db.knowledgeSpaces, db.cards, async () => {
+      await db.knowledgeSpaces.delete(id);
+      await db.cards
+        .where('spaceId')
+        .equals(id)
+        .modify({ spaceId: null });
+    });
+    if (activeSpaceId === id) {
+      set({ activeSpaceId: null });
+    }
+    await get().loadAllData();
+  },
+
+  moveCardToSpace: async (cardId, spaceId) => {
+    await db.cards.update(cardId, {
+      spaceId: spaceId || null,
+      updatedAt: new Date(),
+    });
+    await get().loadAllData();
+  },
+
+  getCardsBySpace: (spaceId) => {
+    const { cards } = get();
+    if (spaceId === null) {
+      return cards.filter((c) => !c.spaceId);
+    }
+    return cards.filter((c) => c.spaceId === spaceId);
   },
 }));

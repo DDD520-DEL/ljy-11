@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import { Card, Link, ReadingRecord, ImportSource, ReviewHistory, CardVersion, Achievement, CardTemplate } from '../types';
+import { Card, Link, ReadingRecord, ImportSource, ReviewHistory, CardVersion, Achievement, CardTemplate, KnowledgeSpace } from '../types';
 
 export class KnowledgeBaseDB extends Dexie {
   cards!: Table<Card, string>;
@@ -10,6 +10,7 @@ export class KnowledgeBaseDB extends Dexie {
   cardVersions!: Table<CardVersion, string>;
   achievements!: Table<Achievement, string>;
   cardTemplates!: Table<CardTemplate, string>;
+  knowledgeSpaces!: Table<KnowledgeSpace, string>;
 
   constructor() {
     super('KnowledgeBaseDB');
@@ -60,6 +61,23 @@ export class KnowledgeBaseDB extends Dexie {
       await tx.table('cards').toCollection().modify((card: any) => {
         if (card.isFavorite === undefined) {
           card.isFavorite = false;
+        }
+      });
+    });
+    this.version(6).stores({
+      cards: 'id, title, createdAt, updatedAt, lastReviewedAt, isFavorite, spaceId',
+      links: 'id, sourceCardId, targetCardId, createdAt',
+      readingRecords: 'id, cardId, startTime, endTime, fromCardId',
+      importSources: 'id, type, importedAt, processed',
+      reviewHistories: 'id, cardId, reviewDate',
+      cardVersions: 'id, cardId, createdAt',
+      achievements: 'id, type, unlockedAt',
+      cardTemplates: 'id, name, createdAt, updatedAt',
+      knowledgeSpaces: 'id, name, createdAt, updatedAt',
+    }).upgrade(async (tx) => {
+      await tx.table('cards').toCollection().modify((card: any) => {
+        if (card.spaceId === undefined) {
+          card.spaceId = null;
         }
       });
     });

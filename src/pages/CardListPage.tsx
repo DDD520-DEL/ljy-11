@@ -37,6 +37,9 @@ export default function CardListPage() {
     exportCardsToJSON,
     exportCardsToMarkdown,
     toggleFavorite,
+    activeSpaceId,
+    knowledgeSpaces,
+    moveCardToSpace,
   } = useStore();
   const [sortBy, setSortBy] = useState<'updated' | 'created' | 'links'>('updated');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -71,6 +74,10 @@ export default function CardListPage() {
   const filteredCards = useMemo(() => {
     let result = [...cards];
 
+    if (activeSpaceId) {
+      result = result.filter((c) => c.spaceId === activeSpaceId);
+    }
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
@@ -104,7 +111,7 @@ export default function CardListPage() {
     }
 
     return result;
-  }, [cards, searchQuery, selectedTags, sortBy, links]);
+  }, [cards, searchQuery, selectedTags, sortBy, links, activeSpaceId]);
 
   useEffect(() => {
     if (isMultiSelectMode && filteredCards.length === 0) {
@@ -203,6 +210,11 @@ export default function CardListPage() {
           </h1>
           <p className="text-white/60">
             共 {cards.length} 张卡片，{filteredCards.length} 个结果
+            {activeSpaceId && knowledgeSpaces.find((s) => s.id === activeSpaceId) && (
+              <span className="ml-2 text-amber-gold">
+                · {knowledgeSpaces.find((s) => s.id === activeSpaceId)!.icon} {knowledgeSpaces.find((s) => s.id === activeSpaceId)!.name}
+              </span>
+            )}
           </p>
         </div>
         {isMultiSelectMode ? (
@@ -435,6 +447,17 @@ export default function CardListPage() {
                 </p>
                 <div className="flex items-center justify-between">
                   <div className="flex gap-1.5 flex-wrap">
+                    {card.spaceId && knowledgeSpaces.find((s) => s.id === card.spaceId) && (
+                      <span
+                        className="px-1.5 py-0.5 rounded text-xs"
+                        style={{
+                          backgroundColor: (knowledgeSpaces.find((s) => s.id === card.spaceId)?.color || '#6b7280') + '20',
+                          color: knowledgeSpaces.find((s) => s.id === card.spaceId)?.color || '#6b7280',
+                        }}
+                      >
+                        {knowledgeSpaces.find((s) => s.id === card.spaceId)!.icon} {knowledgeSpaces.find((s) => s.id === card.spaceId)!.name}
+                      </span>
+                    )}
                     {card.tags.slice(0, 3).map((tag) => (
                       <span key={tag} className="tag-chip text-xs">
                         {tag}

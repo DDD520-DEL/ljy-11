@@ -12,6 +12,7 @@ import {
   FileText,
   LayoutTemplate,
   Star,
+  FolderOpen,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { MarkdownViewer } from '../components/MarkdownViewer';
@@ -39,6 +40,8 @@ export default function CardEditorPage() {
     getCardVersions,
     restoreCardVersion,
     toggleFavorite,
+    knowledgeSpaces,
+    activeSpaceId,
   } = useStore();
 
   const card = !isNew ? cards.find((c) => c.id === id) : null;
@@ -47,6 +50,9 @@ export default function CardEditorPage() {
   const [content, setContent] = useState(card?.content || '');
   const [tags, setTags] = useState<string[]>(card?.tags || []);
   const [tagInput, setTagInput] = useState('');
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null | undefined>(
+    card?.spaceId !== undefined ? card.spaceId : (activeSpaceId || null)
+  );
   const [viewMode, setViewMode] = useState<ViewMode>('edit');
   const [suggestions, setSuggestions] = useState<LinkSuggestion[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -116,6 +122,7 @@ export default function CardEditorPage() {
           title: title.trim(),
           content,
           tags,
+          spaceId: selectedSpaceId || undefined,
         });
         navigate(`/cards/${newCard.id}`);
       } else if (id) {
@@ -123,6 +130,7 @@ export default function CardEditorPage() {
           title: title.trim(),
           content,
           tags,
+          spaceId: selectedSpaceId || undefined,
         });
       }
     } finally {
@@ -310,6 +318,33 @@ export default function CardEditorPage() {
               onChange={(e) => setTitle(e.target.value)}
               className="w-full bg-transparent border-none outline-none font-display text-3xl font-bold text-white placeholder-white/30"
             />
+
+            <div className="flex items-center gap-2">
+              <FolderOpen className="w-4 h-4 text-white/40" />
+              <select
+                value={selectedSpaceId || ''}
+                onChange={(e) => setSelectedSpaceId(e.target.value || null)}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/70 outline-none hover:border-white/20 transition-colors cursor-pointer"
+              >
+                <option value="">未分配空间</option>
+                {knowledgeSpaces.map((space) => (
+                  <option key={space.id} value={space.id}>
+                    {space.icon} {space.name}
+                  </option>
+                ))}
+              </select>
+              {selectedSpaceId && knowledgeSpaces.find((s) => s.id === selectedSpaceId) && (
+                <span
+                  className="px-2 py-0.5 rounded text-xs"
+                  style={{
+                    backgroundColor: (knowledgeSpaces.find((s) => s.id === selectedSpaceId)?.color || '#6b7280') + '20',
+                    color: knowledgeSpaces.find((s) => s.id === selectedSpaceId)?.color || '#6b7280',
+                  }}
+                >
+                  {knowledgeSpaces.find((s) => s.id === selectedSpaceId)!.name}
+                </span>
+              )}
+            </div>
 
             <div className="flex flex-wrap gap-2 items-center">
               {tags.map((tag) => (

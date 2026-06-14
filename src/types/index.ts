@@ -10,6 +10,7 @@ export interface Card {
   easeFactor: number;
   reviewCount: number;
   isFavorite: boolean;
+  spaceId?: string;
 }
 
 export interface Link {
@@ -148,6 +149,16 @@ export interface CardTemplate {
   contentSkeleton: string;
   defaultTags: string[];
   icon: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface KnowledgeSpace {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
   createdAt: Date;
   updatedAt: Date;
 }

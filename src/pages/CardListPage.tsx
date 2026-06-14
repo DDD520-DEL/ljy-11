@@ -8,6 +8,15 @@ import {
   FileText,
   ArrowRight,
   Link,
+  CheckSquare,
+  Square,
+  Trash2,
+  Download,
+  Tags,
+  X,
+  AlertCircle,
+  FileJson,
+  FileText as FileTextIcon,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { formatDistanceToNow } from 'date-fns';
@@ -15,8 +24,25 @@ import { zhCN } from 'date-fns/locale';
 
 export default function CardListPage() {
   const navigate = useNavigate();
-  const { cards, links, searchQuery, setSearchQuery, selectedTags, setSelectedTags } = useStore();
+  const {
+    cards,
+    links,
+    searchQuery,
+    setSearchQuery,
+    selectedTags,
+    setSelectedTags,
+    batchDeleteCards,
+    batchAddTags,
+    exportCardsToJSON,
+    exportCardsToMarkdown,
+  } = useStore();
   const [sortBy, setSortBy] = useState<'updated' | 'created' | 'links'>('updated');
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showTagModal, setShowTagModal] = useState(false);
+  const [tagInput, setTagInput] = useState('');
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   const allTags = useMemo(() => {
     const tags = new Set(cards.flatMap((c) => c.tags));
@@ -69,6 +95,83 @@ export default function CardListPage() {
     }
   };
 
+  const toggleCardSelection = (cardId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (selectedCardIds.includes(cardId)) {
+      setSelectedCardIds(selectedCardIds.filter((id) => id !== cardId));
+    } else {
+      setSelectedCardIds([...selectedCardIds, cardId]);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedCardIds.length === filteredCards.length) {
+      setSelectedCardIds([]);
+    } else {
+      setSelectedCardIds(filteredCards.map((c) => c.id));
+    }
+  };
+
+  const enterMultiSelectMode = () => {
+    setIsMultiSelectMode(true);
+  };
+
+  const exitMultiSelectMode = () => {
+    setIsMultiSelectMode(false);
+    setSelectedCardIds([]);
+  };
+
+  const handleCardClick = (cardId: string) => {
+    if (isMultiSelectMode) {
+      toggleCardSelection(cardId);
+    } else {
+      navigate(`/cards/${cardId}`);
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    await batchDeleteCards(selectedCardIds);
+    setShowDeleteConfirm(false);
+    setSelectedCardIds([]);
+    if (filteredCards.length === 0) {
+      exitMultiSelectMode();
+    }
+  };
+
+  const handleBatchAddTags = async () => {
+    const tags = tagInput
+      .split(/[,，\s]+/)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+    if (tags.length === 0) return;
+
+    await batchAddTags(selectedCardIds, tags);
+    setShowTagModal(false);
+    setTagInput('');
+  };
+
+  const handleExport = (format: 'json' | 'markdown') => {
+    const content =
+      format === 'json'
+        ? exportCardsToJSON(selectedCardIds)
+        : exportCardsToMarkdown(selectedCardIds);
+    const mimeType = format === 'json' ? 'application/json' : 'text/markdown';
+    const fileExtension = format === 'json' ? 'json' : 'md';
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const dateStr = new Date().toISOString().split('T')[0];
+    a.download = `selected-cards-${dateStr}.${fileExtension}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    setShowExportMenu(false);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -80,14 +183,117 @@ export default function CardListPage() {
             共 {cards.length} 张卡片，{filteredCards.length} 个结果
           </p>
         </div>
-        <button
-          onClick={() => navigate('/cards/new')}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          新卡片
-        </button>
+        {isMultiSelectMode ? (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={exitMultiSelectMode}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <X className="w-4 h-4" />
+              取消多选
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={enterMultiSelectMode}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <CheckSquare className="w-4 h-4" />
+              批量操作
+            </button>
+            <button
+              onClick={() => navigate('/cards/new')}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              新卡片
+            </button>
+          </div>
+        )}
       </div>
+
+      <AnimatePresence>
+        {isMultiSelectMode && selectedCardIds.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="glass-card p-4 border-amber-gold/30"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-gold font-medium">
+                    已选择 {selectedCardIds.length} 张卡片
+                  </span>
+                  <span className="text-white/40 text-sm">
+                    (共 {filteredCards.length} 个结果)
+                  </span>
+                </div>
+                <button
+                  onClick={toggleSelectAll}
+                  className="text-sm text-amber-gold hover:text-amber-gold-light transition-colors"
+                >
+                  {selectedCardIds.length === filteredCards.length
+                    ? '取消全选'
+                    : '全选当前结果'}
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <button
+                    onClick={() => setShowExportMenu(!showExportMenu)}
+                    className="btn-secondary flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    批量导出
+                  </button>
+                  <AnimatePresence>
+                    {showExportMenu && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                        className="absolute right-0 top-full mt-2 glass-card p-2 z-10 w-48"
+                      >
+                        <button
+                          onClick={() => handleExport('json')}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors text-left"
+                        >
+                          <FileJson className="w-4 h-4" />
+                          导出为 JSON
+                        </button>
+                        <button
+                          onClick={() => handleExport('markdown')}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors text-left"
+                        >
+                          <FileTextIcon className="w-4 h-4" />
+                          导出为 Markdown
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                <button
+                  onClick={() => setShowTagModal(true)}
+                  className="btn-secondary flex items-center gap-2"
+                >
+                  <Tags className="w-4 h-4" />
+                  批量打标签
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="btn-danger flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  批量删除
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="glass-card p-4">
         <div className="flex items-center gap-4">
@@ -148,6 +354,7 @@ export default function CardListPage() {
             const cardLinks = links.filter(
               (l) => l.sourceCardId === card.id || l.targetCardId === card.id
             );
+            const isSelected = selectedCardIds.includes(card.id);
             return (
               <motion.div
                 key={card.id}
@@ -156,17 +363,33 @@ export default function CardListPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ delay: index * 0.05 }}
-                onClick={() => navigate(`/cards/${card.id}`)}
-                className="glass-card-hover p-5 cursor-pointer group"
+                onClick={() => handleCardClick(card.id)}
+                className={`glass-card-hover p-5 cursor-pointer group relative ${
+                  isSelected ? 'ring-2 ring-amber-gold border-amber-gold/50' : ''
+                }`}
               >
+                {isMultiSelectMode && (
+                  <div
+                    className="absolute top-4 right-4 z-10"
+                    onClick={(e) => toggleCardSelection(card.id, e)}
+                  >
+                    {isSelected ? (
+                      <CheckSquare className="w-5 h-5 text-amber-gold" />
+                    ) : (
+                      <Square className="w-5 h-5 text-white/40 group-hover:text-white/60" />
+                    )}
+                  </div>
+                )}
                 <div className="flex items-start justify-between mb-3">
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-gold/20 to-amber-gold-light/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <FileText className="w-5 h-5 text-amber-gold" />
                   </div>
-                  <div className="flex items-center gap-1 text-white/40 text-sm">
-                    <Link className="w-4 h-4" />
-                    {cardLinks.length}
-                  </div>
+                  {!isMultiSelectMode && (
+                    <div className="flex items-center gap-1 text-white/40 text-sm">
+                      <Link className="w-4 h-4" />
+                      {cardLinks.length}
+                    </div>
+                  )}
                 </div>
                 <h3 className="font-display text-lg font-bold text-white mb-2 group-hover:text-amber-gold transition-colors">
                   {card.title}
@@ -181,6 +404,11 @@ export default function CardListPage() {
                         {tag}
                       </span>
                     ))}
+                    {card.tags.length > 3 && (
+                      <span className="tag-chip text-xs">
+                        +{card.tags.length - 3}
+                      </span>
+                    )}
                   </div>
                   <span className="text-xs text-white/40">
                     {formatDistanceToNow(card.updatedAt, {
@@ -193,7 +421,9 @@ export default function CardListPage() {
                   <span className="text-xs text-white/40">
                     复习间隔: {card.reviewInterval} 天
                   </span>
-                  <ArrowRight className="w-4 h-4 text-white/40 group-hover:text-amber-gold group-hover:translate-x-1 transition-all" />
+                  {!isMultiSelectMode && (
+                    <ArrowRight className="w-4 h-4 text-white/40 group-hover:text-amber-gold group-hover:translate-x-1 transition-all" />
+                  )}
                 </div>
               </motion.div>
             );
@@ -225,6 +455,148 @@ export default function CardListPage() {
           </button>
         </motion.div>
       )}
+
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowDeleteConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="glass-card p-6 w-full max-w-md"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-rose-review/20 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-rose-review" />
+                </div>
+                <div>
+                  <h3 className="font-display text-xl font-bold text-white">
+                    确认删除
+                  </h3>
+                  <p className="text-sm text-white/60">
+                    将删除 {selectedCardIds.length} 张卡片
+                  </p>
+                </div>
+              </div>
+              <p className="text-white/70 mb-6">
+                此操作将永久删除选中的 {selectedCardIds.length} 张卡片及其关联链接。
+                此操作不可撤销，确定要继续吗？
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 btn-secondary"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleBatchDelete}
+                  className="flex-1 bg-rose-review text-white font-medium rounded-xl px-6 py-2.5 hover:bg-rose-review/80 transition-colors"
+                >
+                  确认删除
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showTagModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowTagModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="glass-card p-6 w-full max-w-md"
+            >
+              <h3 className="font-display text-xl font-bold text-white mb-2">
+                批量添加标签
+              </h3>
+              <p className="text-sm text-white/60 mb-4">
+                为 {selectedCardIds.length} 张卡片添加标签
+              </p>
+
+              <div className="mb-4">
+                <label className="block text-sm text-white/70 mb-2">
+                  输入标签（用逗号或空格分隔多个标签）
+                </label>
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleBatchAddTags();
+                  }}
+                  placeholder="例如：重要, 待复习, 编程"
+                  className="input-field w-full"
+                  autoFocus
+                />
+              </div>
+
+              {allTags.length > 0 && (
+                <div className="mb-6">
+                  <p className="text-sm text-white/70 mb-2">常用标签：</p>
+                  <div className="flex flex-wrap gap-2">
+                    {allTags.slice(0, 10).map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={() => {
+                          const currentTags = tagInput
+                            .split(/[,，\s]+/)
+                            .map((t) => t.trim())
+                            .filter((t) => t.length > 0);
+                          if (!currentTags.includes(tag)) {
+                            setTagInput(
+                              [...currentTags, tag].join(', ')
+                            );
+                          }
+                        }}
+                        className="tag-chip text-xs hover:bg-amber-gold/20 hover:border-amber-gold/50 hover:text-amber-gold"
+                      >
+                        + {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowTagModal(false);
+                    setTagInput('');
+                  }}
+                  className="flex-1 btn-secondary"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleBatchAddTags}
+                  disabled={!tagInput.trim()}
+                  className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  添加标签
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -73,6 +73,12 @@ interface StoreState {
   renameTag: (oldName: string, newName: string) => Promise<void>;
   deleteTag: (tagName: string) => Promise<void>;
   mergeTags: (sourceTags: string[], targetTag: string) => Promise<void>;
+
+  batchDeleteCards: (cardIds: string[]) => Promise<void>;
+  batchAddTags: (cardIds: string[], tags: string[]) => Promise<void>;
+  batchRemoveTags: (cardIds: string[], tags: string[]) => Promise<void>;
+  exportCardsToJSON: (cardIds: string[]) => string;
+  exportCardsToMarkdown: (cardIds: string[]) => string;
 }
 
 const generateId = () =>
@@ -724,5 +730,176 @@ export const useStore = create<StoreState>((set, get) => ({
     });
 
     await get().loadAllData();
+  },
+
+  batchDeleteCards: async (cardIds) => {
+    if (cardIds.length === 0) return;
+
+    await db.transaction('rw', db.cards, db.links, async () => {
+      for (const cardId of cardIds) {
+        await db.cards.delete(cardId);
+        await db.links
+          .where('sourceCardId')
+          .equals(cardId)
+          .or('targetCardId')
+          .equals(cardId)
+          .delete();
+      }
+    });
+
+    await get().loadAllData();
+  },
+
+  batchAddTags: async (cardIds, tags) => {
+    if (cardIds.length === 0 || tags.length === 0) return;
+
+    const { cards } = get();
+    const cardsToUpdate = cards.filter((c) => cardIds.includes(c.id));
+
+    await db.transaction('rw', db.cards, async () => {
+      for (const card of cardsToUpdate) {
+        const updatedTags = [...new Set([...card.tags, ...tags])];
+        await db.cards.update(card.id, {
+          ...card,
+          tags: updatedTags,
+          updatedAt: new Date(),
+        });
+      }
+    });
+
+    await get().loadAllData();
+  },
+
+  batchRemoveTags: async (cardIds, tags) => {
+    if (cardIds.length === 0 || tags.length === 0) return;
+
+    const { cards } = get();
+    const cardsToUpdate = cards.filter((c) => cardIds.includes(c.id));
+
+    await db.transaction('rw', db.cards, async () => {
+      for (const card of cardsToUpdate) {
+        const updatedTags = card.tags.filter((t) => !tags.includes(t));
+        await db.cards.update(card.id, {
+          ...card,
+          tags: updatedTags,
+          updatedAt: new Date(),
+        });
+      }
+    });
+
+    await get().loadAllData();
+  },
+
+  exportCardsToJSON: (cardIds) => {
+    const { cards, links } = get();
+    const selectedCards = cards.filter((c) => cardIds.includes(c.id));
+
+    const cardsWithLinks = selectedCards.map((card) => {
+      const outgoing = links
+        .filter((l) => l.sourceCardId === card.id)
+        .map((l) => {
+          const targetCard = cards.find((c) => c.id === l.targetCardId);
+          return {
+            cardId: l.targetCardId,
+            cardTitle: targetCard?.title || '',
+            linkType: l.linkType,
+            createdAt: l.createdAt,
+          };
+        });
+
+      const incoming = links
+        .filter((l) => l.targetCardId === card.id)
+        .map((l) => {
+          const sourceCard = cards.find((c) => c.id === l.sourceCardId);
+          return {
+            cardId: l.sourceCardId,
+            cardTitle: sourceCard?.title || '',
+            linkType: l.linkType,
+            createdAt: l.createdAt,
+          };
+        });
+
+      return {
+        id: card.id,
+        title: card.title,
+        content: card.content,
+        tags: card.tags,
+        createdAt: card.createdAt,
+        updatedAt: card.updatedAt,
+        outgoingLinks: outgoing,
+        incomingLinks: incoming,
+      };
+    });
+
+    const exportData = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      totalCards: selectedCards.length,
+      totalLinks: links.filter(
+        (l) => cardIds.includes(l.sourceCardId) || cardIds.includes(l.targetCardId)
+      ).length,
+      cards: cardsWithLinks,
+    };
+
+    return JSON.stringify(exportData, null, 2);
+  },
+
+  exportCardsToMarkdown: (cardIds) => {
+    const { cards, links } = get();
+    const selectedCards = cards.filter((c) => cardIds.includes(c.id));
+
+    let markdown = `# 知识卡片导出\n\n`;
+    markdown += `> 导出时间: ${new Date().toLocaleString('zh-CN')}\n`;
+    markdown += `> 卡片数量: ${selectedCards.length}\n`;
+    markdown += `> 链接数量: ${
+      links.filter(
+        (l) => cardIds.includes(l.sourceCardId) || cardIds.includes(l.targetCardId)
+      ).length
+    }\n\n`;
+    markdown += `---\n\n`;
+
+    selectedCards.forEach((card, index) => {
+      markdown += `## ${card.title}\n\n`;
+
+      if (card.tags.length > 0) {
+        markdown += `**标签**: ${card.tags.map((t) => `\`${t}\``).join(' ')}\n\n`;
+      }
+
+      markdown += `**创建时间**: ${new Date(card.createdAt).toLocaleString('zh-CN')}\n`;
+      markdown += `**更新时间**: ${new Date(card.updatedAt).toLocaleString('zh-CN')}\n\n`;
+
+      const outgoing = links.filter((l) => l.sourceCardId === card.id);
+      const incoming = links.filter((l) => l.targetCardId === card.id);
+
+      if (outgoing.length > 0) {
+        markdown += `**出链** (${outgoing.length}):\n`;
+        outgoing.forEach((l) => {
+          const targetCard = cards.find((c) => c.id === l.targetCardId);
+          if (targetCard) {
+            markdown += `- [[${targetCard.title}]]\n`;
+          }
+        });
+        markdown += `\n`;
+      }
+
+      if (incoming.length > 0) {
+        markdown += `**入链** (${incoming.length}):\n`;
+        incoming.forEach((l) => {
+          const sourceCard = cards.find((c) => c.id === l.sourceCardId);
+          if (sourceCard) {
+            markdown += `- [[${sourceCard.title}]]\n`;
+          }
+        });
+        markdown += `\n`;
+      }
+
+      markdown += `### 正文\n\n${card.content}\n\n`;
+
+      if (index < selectedCards.length - 1) {
+        markdown += `---\n\n`;
+      }
+    });
+
+    return markdown;
   },
 }));

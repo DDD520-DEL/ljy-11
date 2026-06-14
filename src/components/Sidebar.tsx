@@ -8,12 +8,14 @@ import {
   BarChart3,
   BookOpen,
   Brain,
+  Tag,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: '仪表盘' },
   { path: '/cards', icon: FileText, label: '知识卡片' },
+  { path: '/tags', icon: Tag, label: '标签管理' },
   { path: '/graph', icon: Network, label: '知识图谱' },
   { path: '/import', icon: Upload, label: '数据导入' },
   { path: '/export', icon: Download, label: '数据导出' },

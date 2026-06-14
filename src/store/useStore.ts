@@ -9,6 +9,7 @@ import {
   GraphNode,
   GraphLink,
   LinkSuggestion,
+  TagStats,
 } from '../types';
 import { db } from '../db';
 import {
@@ -67,6 +68,11 @@ interface StoreState {
 
   exportToJSON: () => string;
   exportToMarkdown: () => string;
+
+  getTagStats: () => TagStats[];
+  renameTag: (oldName: string, newName: string) => Promise<void>;
+  deleteTag: (tagName: string) => Promise<void>;
+  mergeTags: (sourceTags: string[], targetTag: string) => Promise<void>;
 }
 
 const generateId = () =>
@@ -622,5 +628,101 @@ export const useStore = create<StoreState>((set, get) => ({
     });
 
     return markdown;
+  },
+
+  getTagStats: () => {
+    const { cards } = get();
+    const tagMap = new Map<string, Card[]>();
+
+    cards.forEach((card) => {
+      card.tags.forEach((tag) => {
+        if (!tagMap.has(tag)) {
+          tagMap.set(tag, []);
+        }
+        tagMap.get(tag)!.push(card);
+      });
+    });
+
+    const stats: TagStats[] = Array.from(tagMap.entries()).map(([name, tagCards]) => {
+      const lastUsedAt = tagCards.reduce(
+        (latest, card) =>
+          card.updatedAt > latest ? card.updatedAt : latest,
+        new Date(0)
+      );
+      return {
+        name,
+        cardCount: tagCards.length,
+        cards: tagCards.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),
+        lastUsedAt,
+      };
+    });
+
+    return stats.sort((a, b) => b.cardCount - a.cardCount);
+  },
+
+  renameTag: async (oldName, newName) => {
+    if (!oldName.trim() || !newName.trim() || oldName === newName) return;
+
+    const { cards } = get();
+    const cardsToUpdate = cards.filter((card) => card.tags.includes(oldName));
+
+    await db.transaction('rw', db.cards, async () => {
+      for (const card of cardsToUpdate) {
+        const updatedTags = card.tags.map((t) => (t === oldName ? newName : t));
+        const uniqueTags = [...new Set(updatedTags)];
+        await db.cards.update(card.id, {
+          ...card,
+          tags: uniqueTags,
+          updatedAt: new Date(),
+        });
+      }
+    });
+
+    await get().loadAllData();
+  },
+
+  deleteTag: async (tagName) => {
+    if (!tagName.trim()) return;
+
+    const { cards } = get();
+    const cardsToUpdate = cards.filter((card) => card.tags.includes(tagName));
+
+    await db.transaction('rw', db.cards, async () => {
+      for (const card of cardsToUpdate) {
+        const updatedTags = card.tags.filter((t) => t !== tagName);
+        await db.cards.update(card.id, {
+          ...card,
+          tags: updatedTags,
+          updatedAt: new Date(),
+        });
+      }
+    });
+
+    await get().loadAllData();
+  },
+
+  mergeTags: async (sourceTags, targetTag) => {
+    if (sourceTags.length === 0 || !targetTag.trim()) return;
+
+    const { cards } = get();
+    const cardsToUpdate = cards.filter((card) =>
+      sourceTags.some((sourceTag) => card.tags.includes(sourceTag))
+    );
+
+    await db.transaction('rw', db.cards, async () => {
+      for (const card of cardsToUpdate) {
+        let updatedTags = card.tags.map((t) =>
+          sourceTags.includes(t) ? targetTag : t
+        );
+        const uniqueTags = [...new Set(updatedTags)];
+        await db.cards.update(card.id, {
+          ...card,
+          tags: uniqueTags,
+          updatedAt: new Date(),
+        });
+      }
+    });
+
+    await get().loadAllData();
   },
 }));

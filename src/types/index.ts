@@ -77,3 +77,10 @@ export interface LinkSuggestion {
 }
 
 export type ReviewRating = 0 | 1 | 2 | 3 | 4 | 5;
+
+export interface TagStats {
+  name: string;
+  cardCount: number;
+  cards: Card[];
+  lastUsedAt: Date;
+}

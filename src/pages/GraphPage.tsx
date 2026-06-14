@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import ForceGraph2D, { ForceGraphMethods } from 'react-force-graph-2d';
@@ -11,9 +11,12 @@ import {
   FileText,
   Link,
   Sparkles,
+  Filter,
+  Crosshair,
+  X,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { GraphNode } from '../types';
+import { GraphData, GraphNode } from '../types';
 
 export default function GraphPage() {
   const navigate = useNavigate();
@@ -23,8 +26,98 @@ export default function GraphPage() {
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const [selectedFilterTags, setSelectedFilterTags] = useState<string[]>([]);
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
+  const lastClickRef = useRef<{ nodeId: string; time: number } | null>(null);
 
-  const graphData = getGraphData();
+  const fullGraphData = getGraphData();
+
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    fullGraphData.nodes.forEach((n) => n.tags.forEach((t) => tagSet.add(t)));
+    return Array.from(tagSet).sort();
+  }, [fullGraphData.nodes]);
+
+  const tagColorMap = useMemo(() => {
+    const tagColors = [
+      '#f59e0b', '#10b981', '#3b82f6', '#ef4444',
+      '#8b5cf6', '#ec4899', '#06b6d4', '#f97316',
+    ];
+    const map = new Map<string, string>();
+    allTags.forEach((tag, i) => map.set(tag, tagColors[i % tagColors.length]));
+    return map;
+  }, [allTags]);
+
+  const filteredGraphData: GraphData = useMemo(() => {
+    if (selectedFilterTags.length === 0 && !focusedNodeId) {
+      return fullGraphData;
+    }
+
+    const visibleNodeIds = new Set<string>();
+
+    if (focusedNodeId) {
+      visibleNodeIds.add(focusedNodeId);
+      fullGraphData.links.forEach((link) => {
+        const srcId = typeof link.source === 'object' ? (link.source as GraphNode).id : link.source;
+        const tgtId = typeof link.target === 'object' ? (link.target as GraphNode).id : link.target;
+        if (srcId === focusedNodeId) visibleNodeIds.add(tgtId);
+        if (tgtId === focusedNodeId) visibleNodeIds.add(srcId);
+      });
+    }
+
+    if (selectedFilterTags.length > 0) {
+      const tagMatchedIds = new Set<string>();
+      fullGraphData.nodes.forEach((node) => {
+        if (node.tags.some((t) => selectedFilterTags.includes(t))) {
+          tagMatchedIds.add(node.id);
+        }
+      });
+
+      const tagNeighborIds = new Set<string>();
+      fullGraphData.links.forEach((link) => {
+        const srcId = typeof link.source === 'object' ? (link.source as GraphNode).id : link.source;
+        const tgtId = typeof link.target === 'object' ? (link.target as GraphNode).id : link.target;
+        if (tagMatchedIds.has(srcId)) tagNeighborIds.add(tgtId);
+        if (tagMatchedIds.has(tgtId)) tagNeighborIds.add(srcId);
+      });
+
+      const tagVisibleIds = new Set([...tagMatchedIds, ...tagNeighborIds]);
+
+      if (focusedNodeId) {
+        const intersection = new Set<string>();
+        tagVisibleIds.forEach((id) => {
+          if (visibleNodeIds.has(id)) intersection.add(id);
+        });
+        intersection.forEach((id) => visibleNodeIds.add(id));
+        const filteredTagMatched = new Set<string>();
+        tagMatchedIds.forEach((id) => {
+          if (visibleNodeIds.has(id)) filteredTagMatched.add(id);
+        });
+        const filteredNeighborIds = new Set<string>();
+        fullGraphData.links.forEach((link) => {
+          const srcId = typeof link.source === 'object' ? (link.source as GraphNode).id : link.source;
+          const tgtId = typeof link.target === 'object' ? (link.target as GraphNode).id : link.target;
+          if (filteredTagMatched.has(srcId) && visibleNodeIds.has(tgtId)) filteredNeighborIds.add(tgtId);
+          if (filteredTagMatched.has(tgtId) && visibleNodeIds.has(srcId)) filteredNeighborIds.add(srcId);
+        });
+        visibleNodeIds.clear();
+        [...filteredTagMatched, ...filteredNeighborIds].forEach((id) => visibleNodeIds.add(id));
+      } else {
+        visibleNodeIds.clear();
+        tagVisibleIds.forEach((id) => visibleNodeIds.add(id));
+      }
+    }
+
+    const nodes = fullGraphData.nodes.filter((n) => visibleNodeIds.has(n.id));
+    const nodeIds = new Set(nodes.map((n) => n.id));
+    const links = fullGraphData.links.filter((link) => {
+      const srcId = typeof link.source === 'object' ? (link.source as GraphNode).id : link.source;
+      const tgtId = typeof link.target === 'object' ? (link.target as GraphNode).id : link.target;
+      return nodeIds.has(srcId) && nodeIds.has(tgtId);
+    });
+
+    return { nodes, links };
+  }, [fullGraphData, selectedFilterTags, focusedNodeId]);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -42,6 +135,9 @@ export default function GraphPage() {
   }, []);
 
   const getNodeColor = useCallback((node: GraphNode) => {
+    if (focusedNodeId && node.id === focusedNodeId) {
+      return '#f59e0b';
+    }
     if (selectedNode && node.id === selectedNode.id) {
       return '#f59e0b';
     }
@@ -49,14 +145,32 @@ export default function GraphPage() {
       return '#fbbf24';
     }
     return node.tagColor;
-  }, [selectedNode, hoveredNode]);
+  }, [selectedNode, hoveredNode, focusedNodeId]);
 
   const handleNodeClick = useCallback(
     (node: any) => {
       const graphNode = node as GraphNode;
-      setSelectedNode(graphNode);
+      const now = Date.now();
+      const lastClick = lastClickRef.current;
+
+      if (
+        lastClick &&
+        lastClick.nodeId === graphNode.id &&
+        now - lastClick.time < 400
+      ) {
+        if (focusedNodeId === graphNode.id) {
+          setFocusedNodeId(null);
+        } else {
+          setFocusedNodeId(graphNode.id);
+          setSelectedNode(graphNode);
+        }
+        lastClickRef.current = null;
+      } else {
+        setSelectedNode(graphNode);
+        lastClickRef.current = { nodeId: graphNode.id, time: now };
+      }
     },
-    []
+    [focusedNodeId]
   );
 
   const handleNodeHover = useCallback(
@@ -90,10 +204,30 @@ export default function GraphPage() {
       graphRef.current.zoomToFit(400, 50);
     }
     setSelectedNode(null);
+    setFocusedNodeId(null);
+    setSelectedFilterTags([]);
+  };
+
+  const toggleFilterTag = (tag: string) => {
+    setSelectedFilterTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const clearFilterTags = () => {
+    setSelectedFilterTags([]);
+  };
+
+  const exitFocusMode = () => {
+    setFocusedNodeId(null);
   };
 
   const selectedCard = selectedNode
     ? cards.find((c) => c.id === selectedNode.id)
+    : null;
+
+  const focusedNode = focusedNodeId
+    ? fullGraphData.nodes.find((n) => n.id === focusedNodeId)
     : null;
 
   const container = {
@@ -158,7 +292,7 @@ export default function GraphPage() {
           <div ref={containerRef} className="w-full h-full relative">
             <ForceGraph2D
               ref={graphRef}
-              graphData={graphData}
+              graphData={filteredGraphData}
               width={dimensions.width - 32}
               height={dimensions.height - 32}
               nodeLabel={(node: any) => (node as GraphNode).name}
@@ -183,27 +317,29 @@ export default function GraphPage() {
                   selectedNode && graphNode.id === selectedNode.id;
                 const isHovered =
                   hoveredNode && graphNode.id === hoveredNode.id;
+                const isFocused =
+                  focusedNodeId && graphNode.id === focusedNodeId;
 
-                if (isSelected || isHovered) {
+                if (isSelected || isHovered || isFocused) {
                   const gradient = ctx.createRadialGradient(
                     graphNode.x!,
                     graphNode.y!,
                     0,
                     graphNode.x!,
                     graphNode.y!,
-                    size * 2
+                    size * (isFocused ? 3 : 2)
                   );
                   gradient.addColorStop(0, `${graphNode.tagColor}60`);
                   gradient.addColorStop(1, 'transparent');
                   ctx.beginPath();
-                  ctx.arc(graphNode.x!, graphNode.y!, size * 2, 0, 2 * Math.PI);
+                  ctx.arc(graphNode.x!, graphNode.y!, size * (isFocused ? 3 : 2), 0, 2 * Math.PI);
                   ctx.fillStyle = gradient;
                   ctx.fill();
                 }
 
                 ctx.beginPath();
                 ctx.arc(graphNode.x!, graphNode.y!, size, 0, 2 * Math.PI);
-                ctx.fillStyle = graphNode.tagColor;
+                ctx.fillStyle = isFocused ? '#f59e0b' : graphNode.tagColor;
                 ctx.fill();
 
                 ctx.beginPath();
@@ -211,7 +347,7 @@ export default function GraphPage() {
                 ctx.fillStyle = '#0f172a';
                 ctx.fill();
 
-                if (isSelected || isHovered || globalScale > 2) {
+                if (isSelected || isHovered || isFocused || globalScale > 2) {
                   ctx.font = `${12 / globalScale}px "JetBrains Mono", monospace`;
                   ctx.textAlign = 'center';
                   ctx.fillStyle = '#ffffff';
@@ -222,17 +358,63 @@ export default function GraphPage() {
                   );
                 }
               }}
+              onNodeDragEnd={(node: any) => {
+                node.fx = node.x;
+                node.fy = node.y;
+              }}
             />
+
+            {(selectedFilterTags.length > 0 || focusedNodeId) && (
+              <div className="absolute top-4 right-4 flex flex-wrap gap-2 items-center">
+                {focusedNodeId && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-gold/20 border border-amber-gold/40 text-amber-gold text-xs">
+                    <Crosshair className="w-3.5 h-3.5" />
+                    <span>聚焦: {focusedNode?.name || focusedNodeId}</span>
+                    <button
+                      onClick={exitFocusMode}
+                      className="hover:text-white transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                {selectedFilterTags.map((tag) => (
+                  <div
+                    key={tag}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs"
+                    style={{
+                      backgroundColor: (tagColorMap.get(tag) || '#6b7280') + '20',
+                      borderColor: (tagColorMap.get(tag) || '#6b7280') + '40',
+                      borderWidth: '1px',
+                      color: tagColorMap.get(tag) || '#6b7280',
+                    }}
+                  >
+                    <span>{tag}</span>
+                    <button
+                      onClick={() => toggleFilterTag(tag)}
+                      className="hover:text-white transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="absolute bottom-4 left-4 flex flex-wrap gap-3 text-xs text-white/60">
               <div className="flex items-center gap-2">
                 <Network className="w-4 h-4" />
-                <span>{graphData.nodes.length} 节点</span>
+                <span>{filteredGraphData.nodes.length} 节点</span>
               </div>
               <div className="flex items-center gap-2">
                 <Link className="w-4 h-4" />
-                <span>{graphData.links.length} 关联</span>
+                <span>{filteredGraphData.links.length} 关联</span>
               </div>
+              {(selectedFilterTags.length > 0 || focusedNodeId) && (
+                <span className="text-white/40">
+                  (共 {fullGraphData.nodes.length} 节点)
+                </span>
+              )}
             </div>
 
             {hoveredNode && (
@@ -241,12 +423,60 @@ export default function GraphPage() {
                 <p className="text-xs text-white/60">
                   {hoveredNode.linkCount} 个关联
                 </p>
+                <p className="text-xs text-white/40 mt-1">双击聚焦节点</p>
               </div>
             )}
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-12rem)]">
+          <div className="glass-card p-6">
+            <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <Filter className="w-5 h-5 text-amber-gold" />
+              标签筛选
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {allTags.map((tag) => {
+                const isActive = selectedFilterTags.includes(tag);
+                const color = tagColorMap.get(tag) || '#6b7280';
+                const count = fullGraphData.nodes.filter((n) =>
+                  n.tags.includes(tag)
+                ).length;
+                return (
+                  <button
+                    key={tag}
+                    onClick={() => toggleFilterTag(tag)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border ${
+                      isActive
+                        ? 'text-white shadow-lg'
+                        : 'text-white/70 bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/30'
+                    }`}
+                    style={
+                      isActive
+                        ? {
+                            backgroundColor: color + '30',
+                            borderColor: color,
+                            boxShadow: `0 0 12px ${color}40`,
+                          }
+                        : undefined
+                    }
+                  >
+                    <span>{tag}</span>
+                    <span className="ml-1.5 opacity-60">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {selectedFilterTags.length > 0 && (
+              <button
+                onClick={clearFilterTags}
+                className="mt-3 w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/60 text-xs hover:bg-white/10 hover:text-white transition-all duration-200"
+              >
+                清除筛选
+              </button>
+            )}
+          </div>
+
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
               <Info className="w-5 h-5 text-amber-gold" />
@@ -327,6 +557,26 @@ export default function GraphPage() {
                   </div>
                 )}
 
+                {focusedNodeId !== selectedNode.id && (
+                  <button
+                    onClick={() => setFocusedNodeId(selectedNode.id)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white/80 text-sm font-medium hover:bg-white/15 hover:text-white transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    <Crosshair className="w-4 h-4" />
+                    聚焦此节点
+                  </button>
+                )}
+
+                {focusedNodeId === selectedNode.id && (
+                  <button
+                    onClick={exitFocusMode}
+                    className="w-full px-4 py-2.5 rounded-xl bg-amber-gold/10 border border-amber-gold/30 text-amber-gold text-sm font-medium hover:bg-amber-gold/20 transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    <X className="w-4 h-4" />
+                    退出聚焦
+                  </button>
+                )}
+
                 <button
                   onClick={handleNavigateToCard}
                   className="w-full btn-primary"
@@ -340,6 +590,7 @@ export default function GraphPage() {
                   <Network className="w-8 h-8 text-white/20" />
                 </div>
                 <p className="text-white/60 text-sm">点击图谱节点查看详情</p>
+                <p className="text-white/40 text-xs mt-1">双击节点进入聚焦模式</p>
               </div>
             )}
           </div>
@@ -350,9 +601,9 @@ export default function GraphPage() {
             </h3>
             <div className="space-y-2">
               {Array.from(
-                new Set(graphData.nodes.map((n) => n.tagColor))
+                new Set(fullGraphData.nodes.map((n) => n.tagColor))
               ).map((color, i) => {
-                const nodesWithColor = graphData.nodes.filter(
+                const nodesWithColor = fullGraphData.nodes.filter(
                   (n) => n.tagColor === color
                 );
                 const sampleNode = nodesWithColor[0];

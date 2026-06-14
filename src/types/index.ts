@@ -64,6 +64,7 @@ export interface GraphNode {
   linkCount: number;
   reviewPriority: number;
   tagColor: string;
+  tags: string[];
   x?: number;
   y?: number;
 }

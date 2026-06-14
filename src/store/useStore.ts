@@ -599,6 +599,7 @@ export const useStore = create<StoreState>((set, get) => ({
         linkCount: cardLinks.length,
         reviewPriority: priority,
         tagColor: card.tags[0] ? tagColorMap.get(card.tags[0]) || '#6b7280' : '#6b7280',
+        tags: card.tags,
       };
     });
 

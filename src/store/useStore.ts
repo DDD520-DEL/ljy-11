@@ -15,6 +15,7 @@ import {
   StreakInfo,
   AchievementType,
   WeeklyReport,
+  CardTemplate,
 } from '../types';
 import { db } from '../db';
 import {
@@ -52,6 +53,7 @@ interface StoreState {
     fromCardId?: string;
   } | null;
   newlyUnlockedAchievements: Achievement[];
+  cardTemplates: CardTemplate[];
 
   initializeData: () => Promise<void>;
   loadAllData: () => Promise<void>;
@@ -103,6 +105,10 @@ interface StoreState {
   clearNewAchievements: () => void;
   getWeeklyReport: () => WeeklyReport;
   getWeeklyReportMarkdown: () => string;
+
+  createTemplate: (template: Partial<CardTemplate>) => Promise<CardTemplate>;
+  updateTemplate: (id: string, updates: Partial<CardTemplate>) => Promise<void>;
+  deleteTemplate: (id: string) => Promise<void>;
 }
 
 const generateId = () =>
@@ -122,6 +128,7 @@ export const useStore = create<StoreState>((set, get) => ({
   searchQuery: '',
   currentReadingSession: null,
   newlyUnlockedAchievements: [],
+  cardTemplates: [],
 
   initializeData: async () => {
     const cards = await db.cards.count();
@@ -137,7 +144,7 @@ export const useStore = create<StoreState>((set, get) => ({
 
   loadAllData: async () => {
     set({ isLoading: true });
-    const [cards, links, readingRecords, importSources, reviewHistories, cardVersions, achievements] =
+    const [cards, links, readingRecords, importSources, reviewHistories, cardVersions, achievements, cardTemplates] =
       await Promise.all([
         db.cards.orderBy('updatedAt').reverse().toArray(),
         db.links.toArray(),
@@ -146,6 +153,7 @@ export const useStore = create<StoreState>((set, get) => ({
         db.reviewHistories.toArray(),
         db.cardVersions.orderBy('createdAt').reverse().toArray(),
         db.achievements.orderBy('unlockedAt').reverse().toArray(),
+        db.cardTemplates.orderBy('updatedAt').reverse().toArray(),
       ]);
     set({
       cards,
@@ -155,6 +163,7 @@ export const useStore = create<StoreState>((set, get) => ({
       reviewHistories,
       cardVersions,
       achievements,
+      cardTemplates,
       isLoading: false,
     });
   },
@@ -1082,5 +1091,40 @@ export const useStore = create<StoreState>((set, get) => ({
     const { cards, links, readingRecords, reviewHistories } = get();
     const report = generateWeeklyReport(cards, links, readingRecords, reviewHistories);
     return formatWeeklyReportMarkdown(report);
+  },
+
+  createTemplate: async (partialTemplate) => {
+    const now = new Date();
+    const newTemplate: CardTemplate = {
+      id: generateId(),
+      name: partialTemplate.name || '未命名模板',
+      description: partialTemplate.description || '',
+      titleFormat: partialTemplate.titleFormat || '',
+      contentSkeleton: partialTemplate.contentSkeleton || '',
+      defaultTags: partialTemplate.defaultTags || [],
+      icon: partialTemplate.icon || '📄',
+      createdAt: now,
+      updatedAt: now,
+    };
+    await db.cardTemplates.add(newTemplate);
+    await get().loadAllData();
+    return newTemplate;
+  },
+
+  updateTemplate: async (id, updates) => {
+    const template = await db.cardTemplates.get(id);
+    if (!template) return;
+    const updatedTemplate = {
+      ...template,
+      ...updates,
+      updatedAt: new Date(),
+    };
+    await db.cardTemplates.update(id, updatedTemplate);
+    await get().loadAllData();
+  },
+
+  deleteTemplate: async (id) => {
+    await db.cardTemplates.delete(id);
+    await get().loadAllData();
   },
 }));

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
   Save,
@@ -10,11 +10,13 @@ import {
   Link,
   Sparkles,
   FileText,
+  LayoutTemplate,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { MarkdownViewer } from '../components/MarkdownViewer';
 import CardVersionHistory from '../components/CardVersionHistory';
-import { LinkSuggestion } from '../types';
+import { TemplateSelector } from '../components/TemplateSelector';
+import { LinkSuggestion, CardTemplate } from '../types';
 
 export default function CardEditorPage() {
   const { id } = useParams();
@@ -45,6 +47,7 @@ export default function CardEditorPage() {
   const [suggestions, setSuggestions] = useState<LinkSuggestion[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [justLinkedId, setJustLinkedId] = useState<string | null>(null);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
 
   const existingCard = !isNew ? cards.find((c) => c.id === id) : null;
   const cardLinks = existingCard ? getCardLinks(existingCard.id) : { outgoing: [], incoming: [] };
@@ -142,6 +145,20 @@ export default function CardEditorPage() {
     setTags(tags.filter((t) => t !== tagToRemove));
   };
 
+  const handleTemplateSelect = (template: CardTemplate) => {
+    if (template.titleFormat && !title) {
+      setTitle(template.titleFormat);
+    }
+    if (template.contentSkeleton && !content) {
+      setContent(template.contentSkeleton);
+    }
+    if (template.defaultTags.length > 0) {
+      const mergedTags = [...new Set([...tags, ...template.defaultTags])];
+      setTags(mergedTags);
+    }
+    setShowTemplateSelector(false);
+  };
+
   const handleInsertLink = (cardTitle: string) => {
     setContent(content + ` [[${cardTitle}]]`);
   };
@@ -200,6 +217,15 @@ export default function CardEditorPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {isNew && (
+            <button
+              onClick={() => setShowTemplateSelector(true)}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <LayoutTemplate className="w-4 h-4" />
+              使用模板
+            </button>
+          )}
           {!isNew && (
             <button onClick={handleDelete} className="btn-danger flex items-center gap-2">
               <Trash2 className="w-4 h-4" />
@@ -501,6 +527,15 @@ export default function CardEditorPage() {
           )}
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {showTemplateSelector && (
+          <TemplateSelector
+            onSelect={handleTemplateSelect}
+            onClose={() => setShowTemplateSelector(false)}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

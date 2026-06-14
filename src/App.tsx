@@ -10,6 +10,7 @@ import ExportPage from './pages/ExportPage';
 import TrajectoryPage from './pages/TrajectoryPage';
 import ReviewPage from './pages/ReviewPage';
 import TagsPage from './pages/TagsPage';
+import TemplatePage from './pages/TemplatePage';
 import { useStore } from './store/useStore';
 import { Loader2 } from 'lucide-react';
 
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="/trajectory" element={<TrajectoryPage />} />
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/tags" element={<TagsPage />} />
+          <Route path="/templates" element={<TemplatePage />} />
         </Routes>
       </Layout>
     </Router>

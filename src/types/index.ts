@@ -138,3 +138,15 @@ export interface StreakInfo {
   activeDays: number;
   achievements: Achievement[];
 }
+
+export interface CardTemplate {
+  id: string;
+  name: string;
+  description: string;
+  titleFormat: string;
+  contentSkeleton: string;
+  defaultTags: string[];
+  icon: string;
+  createdAt: Date;
+  updatedAt: Date;
+}

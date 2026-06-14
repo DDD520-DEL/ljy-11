@@ -10,6 +10,7 @@ import {
   Brain,
   Tag,
   Search,
+  LayoutTemplate,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
@@ -25,6 +26,7 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: '仪表盘' },
     { path: '/cards', icon: FileText, label: '知识卡片' },
+    { path: '/templates', icon: LayoutTemplate, label: '模板管理' },
     { path: '/tags', icon: Tag, label: '标签管理' },
     { path: '/graph', icon: Network, label: '知识图谱' },
     { path: '/import', icon: Upload, label: '数据导入' },

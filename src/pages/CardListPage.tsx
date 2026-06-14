@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -43,6 +43,23 @@ export default function CardListPage() {
   const [showTagModal, setShowTagModal] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  const exitMultiSelectMode = useCallback(() => {
+    setIsMultiSelectMode(false);
+    setSelectedCardIds([]);
+  }, []);
+
+  useEffect(() => {
+    if (!showExportMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showExportMenu]);
 
   const allTags = useMemo(() => {
     const tags = new Set(cards.flatMap((c) => c.tags));
@@ -87,6 +104,12 @@ export default function CardListPage() {
     return result;
   }, [cards, searchQuery, selectedTags, sortBy, links]);
 
+  useEffect(() => {
+    if (isMultiSelectMode && filteredCards.length === 0) {
+      exitMultiSelectMode();
+    }
+  }, [isMultiSelectMode, filteredCards.length, exitMultiSelectMode]);
+
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
       setSelectedTags(selectedTags.filter((t) => t !== tag));
@@ -116,11 +139,6 @@ export default function CardListPage() {
     setIsMultiSelectMode(true);
   };
 
-  const exitMultiSelectMode = () => {
-    setIsMultiSelectMode(false);
-    setSelectedCardIds([]);
-  };
-
   const handleCardClick = (cardId: string) => {
     if (isMultiSelectMode) {
       toggleCardSelection(cardId);
@@ -133,9 +151,6 @@ export default function CardListPage() {
     await batchDeleteCards(selectedCardIds);
     setShowDeleteConfirm(false);
     setSelectedCardIds([]);
-    if (filteredCards.length === 0) {
-      exitMultiSelectMode();
-    }
   };
 
   const handleBatchAddTags = async () => {
@@ -241,7 +256,7 @@ export default function CardListPage() {
                 </button>
               </div>
               <div className="flex items-center gap-2">
-                <div className="relative">
+                <div className="relative" ref={exportMenuRef}>
                   <button
                     onClick={() => setShowExportMenu(!showExportMenu)}
                     className="btn-secondary flex items-center gap-2"

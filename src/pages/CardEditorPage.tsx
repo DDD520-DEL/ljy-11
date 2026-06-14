@@ -54,7 +54,7 @@ export default function CardEditorPage() {
   const handleRestore = async (versionId: string) => {
     if (!id) return;
     await restoreCardVersion(id, versionId);
-    const updatedCard = cards.find((c) => c.id === id);
+    const updatedCard = useStore.getState().cards.find((c) => c.id === id);
     if (updatedCard) {
       setTitle(updatedCard.title);
       setContent(updatedCard.content);

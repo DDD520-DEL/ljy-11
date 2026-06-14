@@ -64,6 +64,9 @@ interface StoreState {
   processImport: (importId: string, createCard: boolean) => Promise<void>;
 
   getGraphData: () => GraphData;
+
+  exportToJSON: () => string;
+  exportToMarkdown: () => string;
 }
 
 const generateId = () =>
@@ -514,5 +517,110 @@ export const useStore = create<StoreState>((set, get) => ({
     }));
 
     return { nodes, links: graphLinks };
+  },
+
+  exportToJSON: () => {
+    const { cards, links } = get();
+
+    const cardsWithLinks = cards.map((card) => {
+      const outgoing = links
+        .filter((l) => l.sourceCardId === card.id)
+        .map((l) => {
+          const targetCard = cards.find((c) => c.id === l.targetCardId);
+          return {
+            cardId: l.targetCardId,
+            cardTitle: targetCard?.title || '',
+            linkType: l.linkType,
+            createdAt: l.createdAt,
+          };
+        });
+
+      const incoming = links
+        .filter((l) => l.targetCardId === card.id)
+        .map((l) => {
+          const sourceCard = cards.find((c) => c.id === l.sourceCardId);
+          return {
+            cardId: l.sourceCardId,
+            cardTitle: sourceCard?.title || '',
+            linkType: l.linkType,
+            createdAt: l.createdAt,
+          };
+        });
+
+      return {
+        id: card.id,
+        title: card.title,
+        content: card.content,
+        tags: card.tags,
+        createdAt: card.createdAt,
+        updatedAt: card.updatedAt,
+        outgoingLinks: outgoing,
+        incomingLinks: incoming,
+      };
+    });
+
+    const exportData = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      totalCards: cards.length,
+      totalLinks: links.length,
+      cards: cardsWithLinks,
+    };
+
+    return JSON.stringify(exportData, null, 2);
+  },
+
+  exportToMarkdown: () => {
+    const { cards, links } = get();
+
+    let markdown = `# 知识卡片导出\n\n`;
+    markdown += `> 导出时间: ${new Date().toLocaleString('zh-CN')}\n`;
+    markdown += `> 卡片数量: ${cards.length}\n`;
+    markdown += `> 链接数量: ${links.length}\n\n`;
+    markdown += `---\n\n`;
+
+    cards.forEach((card, index) => {
+      markdown += `## ${card.title}\n\n`;
+
+      if (card.tags.length > 0) {
+        markdown += `**标签**: ${card.tags.map((t) => `\`${t}\``).join(' ')}\n\n`;
+      }
+
+      markdown += `**创建时间**: ${new Date(card.createdAt).toLocaleString('zh-CN')}\n`;
+      markdown += `**更新时间**: ${new Date(card.updatedAt).toLocaleString('zh-CN')}\n\n`;
+
+      const outgoing = links.filter((l) => l.sourceCardId === card.id);
+      const incoming = links.filter((l) => l.targetCardId === card.id);
+
+      if (outgoing.length > 0) {
+        markdown += `**出链** (${outgoing.length}):\n`;
+        outgoing.forEach((l) => {
+          const targetCard = cards.find((c) => c.id === l.targetCardId);
+          if (targetCard) {
+            markdown += `- [[${targetCard.title}]]\n`;
+          }
+        });
+        markdown += `\n`;
+      }
+
+      if (incoming.length > 0) {
+        markdown += `**入链** (${incoming.length}):\n`;
+        incoming.forEach((l) => {
+          const sourceCard = cards.find((c) => c.id === l.sourceCardId);
+          if (sourceCard) {
+            markdown += `- [[${sourceCard.title}]]\n`;
+          }
+        });
+        markdown += `\n`;
+      }
+
+      markdown += `### 正文\n\n${card.content}\n\n`;
+
+      if (index < cards.length - 1) {
+        markdown += `---\n\n`;
+      }
+    });
+
+    return markdown;
   },
 }));

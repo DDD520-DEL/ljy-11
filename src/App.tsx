@@ -6,6 +6,7 @@ import CardListPage from './pages/CardListPage';
 import CardEditorPage from './pages/CardEditorPage';
 import GraphPage from './pages/GraphPage';
 import ImportPage from './pages/ImportPage';
+import ExportPage from './pages/ExportPage';
 import TrajectoryPage from './pages/TrajectoryPage';
 import ReviewPage from './pages/ReviewPage';
 import { useStore } from './store/useStore';
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="/cards/:id" element={<CardEditorPage />} />
           <Route path="/graph" element={<GraphPage />} />
           <Route path="/import" element={<ImportPage />} />
+          <Route path="/export" element={<ExportPage />} />
           <Route path="/trajectory" element={<TrajectoryPage />} />
           <Route path="/review" element={<ReviewPage />} />
         </Routes>

@@ -4,6 +4,7 @@ import {
   FileText,
   Network,
   Upload,
+  Download,
   BarChart3,
   BookOpen,
   Brain,
@@ -15,6 +16,7 @@ const navItems = [
   { path: '/cards', icon: FileText, label: '知识卡片' },
   { path: '/graph', icon: Network, label: '知识图谱' },
   { path: '/import', icon: Upload, label: '数据导入' },
+  { path: '/export', icon: Download, label: '数据导出' },
   { path: '/trajectory', icon: BarChart3, label: '阅读轨迹' },
   { path: '/review', icon: BookOpen, label: '复习中心' },
 ];

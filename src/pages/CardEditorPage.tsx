@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -45,16 +45,22 @@ export default function CardEditorPage() {
   const existingCard = !isNew ? cards.find((c) => c.id === id) : null;
   const cardLinks = existingCard ? getCardLinks(existingCard.id) : { outgoing: [], incoming: [] };
 
+  const pendingEndRef = useRef<Promise<void> | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      if (pendingEndRef.current) {
+        await pendingEndRef.current;
+        pendingEndRef.current = null;
+      }
       if (!isNew && card && !cancelled) {
         await startReading(card.id);
       }
     })();
     return () => {
       cancelled = true;
-      endReading();
+      pendingEndRef.current = endReading();
     };
   }, [id, card, startReading, endReading, isNew]);
 

@@ -21,7 +21,7 @@ import { zhCN } from 'date-fns/locale';
 
 export default function TagsPage() {
   const navigate = useNavigate();
-  const { getTagStats, renameTag, deleteTag, mergeTags, setSelectedTags } = useStore();
+  const { cards, getTagStats, renameTag, deleteTag, mergeTags, setSelectedTags } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'count' | 'name' | 'recent'>('count');
   const [editingTag, setEditingTag] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export default function TagsPage() {
   const [expandedTag, setExpandedTag] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const tagStats = useMemo(() => getTagStats(), [getTagStats]);
+  const tagStats = useMemo(() => getTagStats(), [cards, getTagStats]);
 
   const filteredTags = useMemo(() => {
     let result = [...tagStats];

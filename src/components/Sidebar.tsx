@@ -9,24 +9,29 @@ import {
   BookOpen,
   Brain,
   Tag,
+  Search,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
-const navItems = [
-  { path: '/', icon: LayoutDashboard, label: '仪表盘' },
-  { path: '/cards', icon: FileText, label: '知识卡片' },
-  { path: '/tags', icon: Tag, label: '标签管理' },
-  { path: '/graph', icon: Network, label: '知识图谱' },
-  { path: '/import', icon: Upload, label: '数据导入' },
-  { path: '/export', icon: Download, label: '数据导出' },
-  { path: '/trajectory', icon: BarChart3, label: '阅读轨迹' },
-  { path: '/review', icon: BookOpen, label: '复习中心' },
-];
+interface SidebarProps {
+  onOpenSearch: () => void;
+}
 
-export function Sidebar() {
+export function Sidebar({ onOpenSearch }: SidebarProps) {
   const location = useLocation();
   const { cards, getReviewQueue } = useStore();
   const reviewCount = getReviewQueue().length;
+
+  const navItems = [
+    { path: '/', icon: LayoutDashboard, label: '仪表盘' },
+    { path: '/cards', icon: FileText, label: '知识卡片' },
+    { path: '/tags', icon: Tag, label: '标签管理' },
+    { path: '/graph', icon: Network, label: '知识图谱' },
+    { path: '/import', icon: Upload, label: '数据导入' },
+    { path: '/export', icon: Download, label: '数据导出' },
+    { path: '/trajectory', icon: BarChart3, label: '阅读轨迹' },
+    { path: '/review', icon: BookOpen, label: '复习中心' },
+  ];
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 glass-card rounded-none border-r border-white/10 flex flex-col">
@@ -40,6 +45,17 @@ export function Sidebar() {
             <p className="text-xs text-white/50">知识网络平台</p>
           </div>
         </div>
+      </div>
+
+      <div className="px-4 pt-4">
+        <button
+          onClick={onOpenSearch}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/40 text-sm transition-all duration-200 hover:bg-white/10 hover:text-white/60 hover:border-white/20"
+        >
+          <Search className="w-4 h-4" />
+          <span className="flex-1 text-left">全局搜索...</span>
+          <kbd className="text-xs px-1.5 py-0.5 rounded bg-white/5 border border-white/10">⌘K</kbd>
+        </button>
       </div>
 
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">

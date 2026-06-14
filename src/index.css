@@ -203,3 +203,10 @@ h1, h2, h3, h4, h5, h6 {
 .wiki-link {
   @apply text-amber-gold hover:text-amber-gold-light cursor-pointer transition-colors;
 }
+
+.search-highlight {
+  background: rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+  border-radius: 2px;
+  padding: 0 2px;
+}

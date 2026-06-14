@@ -109,6 +109,9 @@ interface StoreState {
   createTemplate: (template: Partial<CardTemplate>) => Promise<CardTemplate>;
   updateTemplate: (id: string, updates: Partial<CardTemplate>) => Promise<void>;
   deleteTemplate: (id: string) => Promise<void>;
+
+  toggleFavorite: (cardId: string) => Promise<void>;
+  getFavoriteCards: () => Card[];
 }
 
 const generateId = () =>
@@ -180,6 +183,7 @@ export const useStore = create<StoreState>((set, get) => ({
       reviewInterval: 1,
       easeFactor: 2.5,
       reviewCount: 0,
+      isFavorite: false,
     };
 
     await db.cards.add(newCard);
@@ -1126,5 +1130,23 @@ export const useStore = create<StoreState>((set, get) => ({
   deleteTemplate: async (id) => {
     await db.cardTemplates.delete(id);
     await get().loadAllData();
+  },
+
+  toggleFavorite: async (cardId) => {
+    const card = await db.cards.get(cardId);
+    if (!card) return;
+
+    await db.cards.update(cardId, {
+      isFavorite: !card.isFavorite,
+      updatedAt: new Date(),
+    });
+    await get().loadAllData();
+  },
+
+  getFavoriteCards: () => {
+    const { cards } = get();
+    return cards
+      .filter((c) => c.isFavorite)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   },
 }));

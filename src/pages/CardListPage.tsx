@@ -17,6 +17,7 @@ import {
   AlertCircle,
   FileJson,
   FileText as FileTextIcon,
+  Star,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { formatDistanceToNow } from 'date-fns';
@@ -35,6 +36,7 @@ export default function CardListPage() {
     batchAddTags,
     exportCardsToJSON,
     exportCardsToMarkdown,
+    toggleFavorite,
   } = useStore();
   const [sortBy, setSortBy] = useState<'updated' | 'created' | 'links'>('updated');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -186,6 +188,11 @@ export default function CardListPage() {
 
     setShowExportMenu(false);
   };
+
+  const handleToggleFavorite = useCallback(async (cardId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await toggleFavorite(cardId);
+  }, [toggleFavorite]);
 
   return (
     <div className="space-y-6">
@@ -381,9 +388,9 @@ export default function CardListPage() {
                 onClick={() => handleCardClick(card.id)}
                 className={`glass-card-hover p-5 cursor-pointer group relative ${
                   isSelected ? 'ring-2 ring-amber-gold border-amber-gold/50' : ''
-                }`}
+                } ${card.isFavorite ? 'ring-2 ring-amber-gold/30 border-amber-gold/20' : ''}`}
               >
-                {isMultiSelectMode && (
+                {isMultiSelectMode ? (
                   <div
                     className="absolute top-4 right-4 z-10"
                     onClick={(e) => toggleCardSelection(card.id, e)}
@@ -394,13 +401,27 @@ export default function CardListPage() {
                       <Square className="w-5 h-5 text-white/40 group-hover:text-white/60" />
                     )}
                   </div>
+                ) : (
+                  <button
+                    onClick={(e) => handleToggleFavorite(card.id, e)}
+                    className="absolute top-4 right-4 z-10 p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                    title={card.isFavorite ? '取消收藏' : '添加收藏'}
+                  >
+                    <Star
+                      className={`w-5 h-5 transition-all duration-200 ${
+                        card.isFavorite
+                          ? 'text-amber-gold fill-amber-gold scale-110'
+                          : 'text-white/40 group-hover:text-white/60'
+                      }`}
+                    />
+                  </button>
                 )}
                 <div className="flex items-start justify-between mb-3">
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-gold/20 to-amber-gold-light/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <FileText className="w-5 h-5 text-amber-gold" />
                   </div>
                   {!isMultiSelectMode && (
-                    <div className="flex items-center gap-1 text-white/40 text-sm">
+                    <div className="flex items-center gap-1 text-white/40 text-sm mr-10">
                       <Link className="w-4 h-4" />
                       {cardLinks.length}
                     </div>

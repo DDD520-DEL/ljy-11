@@ -47,6 +47,22 @@ export class KnowledgeBaseDB extends Dexie {
       achievements: 'id, type, unlockedAt',
       cardTemplates: 'id, name, createdAt, updatedAt',
     });
+    this.version(5).stores({
+      cards: 'id, title, createdAt, updatedAt, lastReviewedAt, isFavorite',
+      links: 'id, sourceCardId, targetCardId, createdAt',
+      readingRecords: 'id, cardId, startTime, endTime, fromCardId',
+      importSources: 'id, type, importedAt, processed',
+      reviewHistories: 'id, cardId, reviewDate',
+      cardVersions: 'id, cardId, createdAt',
+      achievements: 'id, type, unlockedAt',
+      cardTemplates: 'id, name, createdAt, updatedAt',
+    }).upgrade(async (tx) => {
+      await tx.table('cards').toCollection().modify((card: any) => {
+        if (card.isFavorite === undefined) {
+          card.isFavorite = false;
+        }
+      });
+    });
   }
 }
 

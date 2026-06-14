@@ -20,6 +20,7 @@ import {
   Flame,
   Trophy,
   BarChart3,
+  Star,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -52,6 +53,7 @@ export default function DashboardPage() {
     getStreakInfo,
     newlyUnlockedAchievements,
     clearNewAchievements,
+    getFavoriteCards,
   } = useStore();
   const {
     settings: notificationSettings,
@@ -74,6 +76,7 @@ export default function DashboardPage() {
   const consecutiveDaysOff = getConsecutiveDaysWithoutReview(reviewHistories);
   const todayReviewed = getTodayReviewedCount(reviewHistories);
   const maxReviewedInWeek = Math.max(...reviewStats.map((s) => s.reviewed), 1);
+  const favoriteCards = getFavoriteCards();
 
   const weekActiveDays = (() => {
     const learningDays = getLearningDays(readingRecords, reviewHistories);
@@ -123,6 +126,16 @@ export default function DashboardPage() {
       change: formatGrowth(cardsGrowth),
       growth: cardsGrowth,
       periodLabel: '较上周',
+    },
+    {
+      icon: Star,
+      label: '我的收藏',
+      value: favoriteCards.length,
+      color: 'from-amber-400 to-yellow-400',
+      change: favoriteCards.length > 0 ? '点击查看' : '快去收藏',
+      growth: { changePercent: 0, isPositive: true },
+      periodLabel: '重要卡片',
+      onClick: () => navigate('/favorites'),
     },
     {
       icon: Network,
@@ -314,16 +327,23 @@ export default function DashboardPage() {
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <motion.div key={index} variants={item} className="stat-card group">
+            <motion.div
+              key={index}
+              variants={item}
+              className={`stat-card group ${stat.onClick ? 'cursor-pointer hover:scale-[1.02] transition-transform' : ''}`}
+              onClick={stat.onClick}
+            >
               <div className="flex items-start justify-between mb-4">
                 <div
                   className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}
                 >
-                  <Icon className="w-6 h-6 text-white" />
+                  <Icon className={`w-6 h-6 text-white ${stat.label === '我的收藏' && favoriteCards.length > 0 ? 'fill-white' : ''}`} />
                 </div>
                 <div className="text-right">
                   <span className={`text-xs font-medium ${
-                    stat.growth.isPositive
+                    stat.label === '我的收藏'
+                      ? 'text-amber-gold'
+                      : stat.growth.isPositive
                       ? 'text-emerald-mastered'
                       : 'text-rose-review-light'
                   }`}>

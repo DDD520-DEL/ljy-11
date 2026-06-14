@@ -9,6 +9,7 @@ export interface Card {
   reviewInterval: number;
   easeFactor: number;
   reviewCount: number;
+  isFavorite: boolean;
 }
 
 export interface Link {

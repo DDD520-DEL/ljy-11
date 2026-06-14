@@ -25,6 +25,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       reviewInterval: 3,
       easeFactor: 2.5,
       reviewCount: 4,
+      isFavorite: true,
     },
     {
       id: generateId(),
@@ -45,6 +46,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       reviewInterval: 6,
       easeFactor: 2.6,
       reviewCount: 3,
+      isFavorite: true,
     },
     {
       id: generateId(),
@@ -72,6 +74,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       reviewInterval: 10,
       easeFactor: 2.8,
       reviewCount: 5,
+      isFavorite: false,
     },
     {
       id: generateId(),
@@ -95,6 +98,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       reviewInterval: 4,
       easeFactor: 2.4,
       reviewCount: 2,
+      isFavorite: false,
     },
     {
       id: generateId(),
@@ -120,6 +124,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       reviewInterval: 2,
       easeFactor: 2.3,
       reviewCount: 3,
+      isFavorite: false,
     },
     {
       id: generateId(),
@@ -141,6 +146,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       reviewInterval: 1,
       easeFactor: 2.5,
       reviewCount: 0,
+      isFavorite: false,
     },
     {
       id: generateId(),
@@ -161,6 +167,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       reviewInterval: 7,
       easeFactor: 2.5,
       reviewCount: 1,
+      isFavorite: false,
     },
     {
       id: generateId(),
@@ -184,6 +191,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       reviewInterval: 3,
       easeFactor: 2.6,
       reviewCount: 2,
+      isFavorite: false,
     },
     {
       id: generateId(),
@@ -202,6 +210,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       reviewInterval: 1,
       easeFactor: 2.5,
       reviewCount: 0,
+      isFavorite: false,
     },
     {
       id: generateId(),
@@ -226,6 +235,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       reviewInterval: 1,
       easeFactor: 2.5,
       reviewCount: 1,
+      isFavorite: false,
     },
   ];
 

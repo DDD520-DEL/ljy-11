@@ -11,6 +11,7 @@ import TrajectoryPage from './pages/TrajectoryPage';
 import ReviewPage from './pages/ReviewPage';
 import TagsPage from './pages/TagsPage';
 import TemplatePage from './pages/TemplatePage';
+import FavoritesPage from './pages/FavoritesPage';
 import { useStore } from './store/useStore';
 import { Loader2 } from 'lucide-react';
 
@@ -44,6 +45,7 @@ export default function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/cards" element={<CardListPage />} />
           <Route path="/cards/new" element={<CardEditorPage />} />
           <Route path="/cards/:id" element={<CardEditorPage />} />

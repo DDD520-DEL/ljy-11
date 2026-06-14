@@ -11,6 +11,7 @@ import {
   Tag,
   Search,
   LayoutTemplate,
+  Star,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
@@ -20,11 +21,13 @@ interface SidebarProps {
 
 export function Sidebar({ onOpenSearch }: SidebarProps) {
   const location = useLocation();
-  const { cards, getReviewQueue } = useStore();
+  const { cards, getReviewQueue, getFavoriteCards } = useStore();
   const reviewCount = getReviewQueue().length;
+  const favoriteCount = getFavoriteCards().length;
 
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: '仪表盘' },
+    { path: '/favorites', icon: Star, label: '我的收藏' },
     { path: '/cards', icon: FileText, label: '知识卡片' },
     { path: '/templates', icon: LayoutTemplate, label: '模板管理' },
     { path: '/tags', icon: Tag, label: '标签管理' },
@@ -72,6 +75,11 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
             >
               <Icon className="w-5 h-5" />
               <span className="flex-1">{item.label}</span>
+              {item.path === '/favorites' && favoriteCount > 0 && (
+                <span className="px-2 py-0.5 text-xs bg-amber-gold text-deep-space rounded-full font-medium">
+                  {favoriteCount}
+                </span>
+              )}
               {item.path === '/review' && reviewCount > 0 && (
                 <span className="px-2 py-0.5 text-xs bg-rose-review text-white rounded-full">
                   {reviewCount}

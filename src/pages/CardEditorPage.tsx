@@ -11,6 +11,7 @@ import {
   Sparkles,
   FileText,
   LayoutTemplate,
+  Star,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { MarkdownViewer } from '../components/MarkdownViewer';
@@ -37,6 +38,7 @@ export default function CardEditorPage() {
     endReading,
     getCardVersions,
     restoreCardVersion,
+    toggleFavorite,
   } = useStore();
 
   const card = !isNew ? cards.find((c) => c.id === id) : null;
@@ -263,6 +265,22 @@ export default function CardEditorPage() {
             >
               <LayoutTemplate className="w-4 h-4" />
               使用模板
+            </button>
+          )}
+          {!isNew && card && (
+            <button
+              onClick={() => toggleFavorite(card.id)}
+              className={`btn-secondary flex items-center gap-2 transition-all ${
+                card.isFavorite
+                  ? 'bg-amber-gold/20 border-amber-gold/50 text-amber-gold'
+                  : ''
+              }`}
+              title={card.isFavorite ? '取消收藏' : '添加收藏'}
+            >
+              <Star
+                className={`w-4 h-4 ${card.isFavorite ? 'fill-amber-gold' : ''}`}
+              />
+              {card.isFavorite ? '已收藏' : '收藏'}
             </button>
           )}
           {!isNew && (

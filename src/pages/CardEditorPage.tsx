@@ -16,6 +16,8 @@ import { useStore } from '../store/useStore';
 import { MarkdownViewer } from '../components/MarkdownViewer';
 import CardVersionHistory from '../components/CardVersionHistory';
 import { TemplateSelector } from '../components/TemplateSelector';
+import { MarkdownToolbar, ViewMode, MarkdownAction } from '../components/MarkdownToolbar';
+import { insertMarkdown } from '../utils/markdownEditor';
 import { LinkSuggestion, CardTemplate } from '../types';
 
 export default function CardEditorPage() {
@@ -43,11 +45,13 @@ export default function CardEditorPage() {
   const [content, setContent] = useState(card?.content || '');
   const [tags, setTags] = useState<string[]>(card?.tags || []);
   const [tagInput, setTagInput] = useState('');
-  const [showPreview, setShowPreview] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('edit');
   const [suggestions, setSuggestions] = useState<LinkSuggestion[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [justLinkedId, setJustLinkedId] = useState<string | null>(null);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const existingCard = !isNew ? cards.find((c) => c.id === id) : null;
   const cardLinks = existingCard ? getCardLinks(existingCard.id) : { outgoing: [], incoming: [] };
@@ -162,6 +166,41 @@ export default function CardEditorPage() {
   const handleInsertLink = (cardTitle: string) => {
     setContent(content + ` [[${cardTitle}]]`);
   };
+
+  const handleInsertMarkdown = useCallback(
+    (action: MarkdownAction, data?: { url?: string }) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      textarea.focus();
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+
+      const result = insertMarkdown(content, start, end, action, { url: data?.url });
+      setContent(result.newValue);
+
+      requestAnimationFrame(() => {
+        textarea.focus();
+        textarea.setSelectionRange(result.newStart, result.newEnd);
+      });
+    },
+    [content]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'b' || e.key === 'B') {
+          e.preventDefault();
+          handleInsertMarkdown('bold');
+        } else if (e.key === 'i' || e.key === 'I') {
+          e.preventDefault();
+          handleInsertMarkdown('italic');
+        }
+      }
+    },
+    [handleInsertMarkdown]
+  );
 
   const handleCreateLink = async (targetCardId: string) => {
     if (!id || isNew) {
@@ -281,30 +320,13 @@ export default function CardEditorPage() {
             </div>
           </div>
 
-          <div className="glass-card">
-            <div className="flex items-center justify-between px-6 py-3 border-b border-white/10">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowPreview(false)}
-                  className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-                    !showPreview
-                      ? 'bg-white/10 text-white'
-                      : 'text-white/60 hover:text-white'
-                  }`}
-                >
-                  编辑
-                </button>
-                <button
-                  onClick={() => setShowPreview(true)}
-                  className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-                    showPreview
-                      ? 'bg-white/10 text-white'
-                      : 'text-white/60 hover:text-white'
-                  }`}
-                >
-                  预览
-                </button>
-              </div>
+          <div className="glass-card overflow-hidden">
+            <MarkdownToolbar
+              onInsert={handleInsertMarkdown}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+            />
+            <div className="flex items-center justify-end px-4 py-2 border-b border-white/5 bg-white/[0.01]">
               <button
                 onClick={handleSuggestLinks}
                 className="flex items-center gap-2 px-3 py-1.5 text-xs bg-amber-gold/10 text-amber-gold rounded-lg hover:bg-amber-gold/20 transition-colors"
@@ -313,19 +335,40 @@ export default function CardEditorPage() {
                 智能建议
               </button>
             </div>
-            {!showPreview ? (
+            {viewMode === 'edit' ? (
               <textarea
+                ref={textareaRef}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="开始编写内容...
 
 使用 [[卡片标题]] 创建双向链接
-支持 Markdown 语法"
+支持 Markdown 语法
+快捷键: Ctrl+B 加粗, Ctrl+I 斜体"
                 className="w-full h-96 p-6 bg-transparent border-none outline-none resize-none font-mono text-sm text-white placeholder-white/30"
               />
-            ) : (
-              <div className="p-6">
+            ) : viewMode === 'preview' ? (
+              <div className="p-6 h-96 overflow-y-auto">
                 <MarkdownViewer content={content || '*暂无内容*'} />
+              </div>
+            ) : (
+              <div className="flex h-96">
+                <textarea
+                  ref={textareaRef}
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="开始编写内容...
+
+使用 [[卡片标题]] 创建双向链接
+支持 Markdown 语法
+快捷键: Ctrl+B 加粗, Ctrl+I 斜体"
+                  className="w-1/2 h-full p-6 bg-transparent border-none outline-none resize-none font-mono text-sm text-white placeholder-white/30 border-r border-white/10"
+                />
+                <div className="w-1/2 p-6 overflow-y-auto">
+                  <MarkdownViewer content={content || '*暂无内容*'} />
+                </div>
               </div>
             )}
           </div>

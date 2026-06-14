@@ -7,7 +7,7 @@ import {
   startDailyReminder,
   stopDailyReminder,
   isNotificationSupported,
-  sendReviewReminder,
+  sendTestReviewReminder,
 } from '../utils/notification';
 import { useStore } from '../store/useStore';
 
@@ -106,7 +106,7 @@ export function useNotification() {
 
   const testNotification = useCallback(() => {
     const count = getReviewCount();
-    return sendReviewReminder(count);
+    return sendTestReviewReminder(count || 5);
   }, [getReviewCount]);
 
   return {

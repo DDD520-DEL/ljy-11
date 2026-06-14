@@ -1,4 +1,4 @@
-import { Card, ReviewHistory } from '../types';
+import { Card, Link, ReviewHistory, ReadingRecord } from '../types';
 
 export function calculateNextReview(card: Card, rating: number): Partial<Card> {
   let { easeFactor, reviewInterval, reviewCount } = card;
@@ -214,4 +214,160 @@ export function getTodayReviewedCount(
   return reviewHistories.filter(
     (h) => new Date(h.reviewDate).toISOString().split('T')[0] === today
   ).length;
+}
+
+export interface PeriodComparison {
+  currentPeriod: number;
+  previousPeriod: number;
+  changePercent: number;
+  isPositive: boolean;
+}
+
+function getDateKey(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+function getDaysInRange(daysAgoStart: number, daysAgoEnd: number): string[] {
+  const dates: string[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = daysAgoStart; i <= daysAgoEnd; i++) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    dates.push(getDateKey(date));
+  }
+
+  return dates;
+}
+
+export function getCardsWeekOverWeek(cards: Card[]): PeriodComparison {
+  const thisWeekDates = new Set(getDaysInRange(0, 6));
+  const lastWeekDates = new Set(getDaysInRange(7, 13));
+
+  let thisWeekCount = 0;
+  let lastWeekCount = 0;
+
+  cards.forEach((card) => {
+    const dateKey = getDateKey(new Date(card.createdAt));
+    if (thisWeekDates.has(dateKey)) {
+      thisWeekCount++;
+    }
+    if (lastWeekDates.has(dateKey)) {
+      lastWeekCount++;
+    }
+  });
+
+  const changePercent =
+    lastWeekCount === 0
+      ? thisWeekCount > 0
+        ? 100
+        : 0
+      : Math.round(((thisWeekCount - lastWeekCount) / lastWeekCount) * 100);
+
+  return {
+    currentPeriod: thisWeekCount,
+    previousPeriod: lastWeekCount,
+    changePercent,
+    isPositive: changePercent >= 0,
+  };
+}
+
+export function getLinksWeekOverWeek(links: Link[]): PeriodComparison {
+  const thisWeekDates = new Set(getDaysInRange(0, 6));
+  const lastWeekDates = new Set(getDaysInRange(7, 13));
+
+  let thisWeekCount = 0;
+  let lastWeekCount = 0;
+
+  links.forEach((link) => {
+    const dateKey = getDateKey(new Date(link.createdAt));
+    if (thisWeekDates.has(dateKey)) {
+      thisWeekCount++;
+    }
+    if (lastWeekDates.has(dateKey)) {
+      lastWeekCount++;
+    }
+  });
+
+  const changePercent =
+    lastWeekCount === 0
+      ? thisWeekCount > 0
+        ? 100
+        : 0
+      : Math.round(((thisWeekCount - lastWeekCount) / lastWeekCount) * 100);
+
+  return {
+    currentPeriod: thisWeekCount,
+    previousPeriod: lastWeekCount,
+    changePercent,
+    isPositive: changePercent >= 0,
+  };
+}
+
+export function getReadingTimeWeekOverWeek(
+  readingRecords: ReadingRecord[]
+): PeriodComparison {
+  const thisWeekDates = new Set(getDaysInRange(0, 6));
+  const lastWeekDates = new Set(getDaysInRange(7, 13));
+
+  let thisWeekSeconds = 0;
+  let lastWeekSeconds = 0;
+
+  readingRecords.forEach((record) => {
+    const dateKey = getDateKey(new Date(record.startTime));
+    if (thisWeekDates.has(dateKey)) {
+      thisWeekSeconds += record.duration;
+    }
+    if (lastWeekDates.has(dateKey)) {
+      lastWeekSeconds += record.duration;
+    }
+  });
+
+  const changePercent =
+    lastWeekSeconds === 0
+      ? thisWeekSeconds > 0
+        ? 100
+        : 0
+      : Math.round(((thisWeekSeconds - lastWeekSeconds) / lastWeekSeconds) * 100);
+
+  return {
+    currentPeriod: thisWeekSeconds,
+    previousPeriod: lastWeekSeconds,
+    changePercent,
+    isPositive: changePercent >= 0,
+  };
+}
+
+export function getReviewQueueDayOverDay(cards: Card[]): PeriodComparison {
+  const now = new Date();
+  const todayCount = cards.filter((card) => {
+    if (!card.lastReviewedAt) return true;
+    const daysSinceReview =
+      (now.getTime() - card.lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24);
+    return daysSinceReview >= card.reviewInterval;
+  }).length;
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayCount = cards.filter((card) => {
+    if (!card.lastReviewedAt) return true;
+    const daysSinceReview =
+      (yesterday.getTime() - card.lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24);
+    return daysSinceReview >= card.reviewInterval;
+  }).length;
+
+  const changePercent =
+    yesterdayCount === 0
+      ? todayCount > 0
+        ? 100
+        : 0
+      : Math.round(((todayCount - yesterdayCount) / yesterdayCount) * 100);
+
+  return {
+    currentPeriod: todayCount,
+    previousPeriod: yesterdayCount,
+    changePercent,
+    isPositive: changePercent <= 0,
+  };
 }

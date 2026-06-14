@@ -25,6 +25,10 @@ import {
   getReviewStatsByDay,
   getConsecutiveDaysWithoutReview,
   getTodayReviewedCount,
+  getCardsWeekOverWeek,
+  getLinksWeekOverWeek,
+  getReadingTimeWeekOverWeek,
+  getReviewQueueDayOverDay,
 } from '../utils/algorithm';
 import { useNotification } from '../hooks/useNotification';
 
@@ -51,9 +55,19 @@ export default function DashboardPage() {
   const todayReviewed = getTodayReviewedCount(reviewHistories);
   const maxReviewedInWeek = Math.max(...reviewStats.map((s) => s.reviewed), 1);
 
+  const cardsGrowth = getCardsWeekOverWeek(cards);
+  const linksGrowth = getLinksWeekOverWeek(links);
+  const readingGrowth = getReadingTimeWeekOverWeek(readingRecords);
+  const reviewGrowth = getReviewQueueDayOverDay(cards);
+
   const recentCards = cards.slice(0, 5);
 
   const showStreakWarning = consecutiveDaysOff >= 2 && reviewQueue.length > 0;
+
+  const formatGrowth = (growth: { changePercent: number; isPositive: boolean }) => {
+    const sign = growth.changePercent > 0 ? '+' : '';
+    return `${sign}${growth.changePercent}%`;
+  };
 
   const stats = [
     {
@@ -61,28 +75,36 @@ export default function DashboardPage() {
       label: '知识卡片',
       value: cards.length,
       color: 'from-amber-gold to-amber-gold-light',
-      change: '+12%',
+      change: formatGrowth(cardsGrowth),
+      growth: cardsGrowth,
+      periodLabel: '较上周',
     },
     {
       icon: Network,
       label: '知识关联',
       value: links.length,
       color: 'from-blue-500 to-cyan-500',
-      change: '+8%',
+      change: formatGrowth(linksGrowth),
+      growth: linksGrowth,
+      periodLabel: '较上周',
     },
     {
       icon: Clock,
       label: '阅读时长',
       value: `${Math.floor(totalReadingTime / 60)}分钟`,
       color: 'from-emerald-mastered to-teal-500',
-      change: '+25%',
+      change: formatGrowth(readingGrowth),
+      growth: readingGrowth,
+      periodLabel: '较上周',
     },
     {
       icon: TrendingUp,
       label: '待复习',
       value: reviewQueue.length,
       color: 'from-rose-review to-pink-500',
-      change: reviewQueue.length > 5 ? '急需复习' : '良好',
+      change: formatGrowth(reviewGrowth),
+      growth: reviewGrowth,
+      periodLabel: '较昨日',
     },
   ];
 
@@ -191,9 +213,18 @@ export default function DashboardPage() {
                 >
                   <Icon className="w-6 h-6 text-white" />
                 </div>
-                <span className="text-xs text-emerald-mastered font-medium">
-                  {stat.change}
-                </span>
+                <div className="text-right">
+                  <span className={`text-xs font-medium ${
+                    stat.growth.isPositive
+                      ? 'text-emerald-mastered'
+                      : 'text-rose-review-light'
+                  }`}>
+                    {stat.change}
+                  </span>
+                  <p className="text-xs text-white/40 mt-0.5">
+                    {stat.periodLabel}
+                  </p>
+                </div>
               </div>
               <p className="text-3xl font-bold text-white mb-1">{stat.value}</p>
               <p className="text-sm text-white/50">{stat.label}</p>

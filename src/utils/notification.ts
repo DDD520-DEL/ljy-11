@@ -96,16 +96,21 @@ function setLastNotificationDate(date: string): void {
   }
 }
 
-export function sendReviewReminder(reviewCount: number): Notification | null {
+export function sendReviewReminder(
+  reviewCount: number,
+  skipDailyCheck: boolean = false
+): Notification | null {
   if (reviewCount === 0) {
     return null;
   }
 
   const today = new Date().toISOString().split('T')[0];
-  const lastNotification = getLastNotificationDate();
 
-  if (lastNotification === today) {
-    return null;
+  if (!skipDailyCheck) {
+    const lastNotification = getLastNotificationDate();
+    if (lastNotification === today) {
+      return null;
+    }
   }
 
   const title = '📚 复习提醒';
@@ -116,15 +121,19 @@ export function sendReviewReminder(reviewCount: number): Notification | null {
 
   const notification = sendNotification(title, {
     body,
-    tag: 'daily-review-reminder',
+    tag: skipDailyCheck ? 'test-review-reminder' : 'daily-review-reminder',
     requireInteraction: true,
   });
 
-  if (notification) {
+  if (notification && !skipDailyCheck) {
     setLastNotificationDate(today);
   }
 
   return notification;
+}
+
+export function sendTestReviewReminder(reviewCount: number): Notification | null {
+  return sendReviewReminder(reviewCount, true);
 }
 
 let reminderInterval: number | null = null;

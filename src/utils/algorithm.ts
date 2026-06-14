@@ -1,4 +1,4 @@
-import { Card } from '../types';
+import { Card, ReviewHistory } from '../types';
 
 export function calculateNextReview(card: Card, rating: number): Partial<Card> {
   let { easeFactor, reviewInterval, reviewCount } = card;
@@ -130,4 +130,88 @@ export function parseWikiLinks(content: string): string[] {
     matches.push(match[1]);
   }
   return matches;
+}
+
+export interface DailyReviewStats {
+  date: string;
+  reviewed: number;
+  newCards: number;
+}
+
+export function getReviewStatsByDay(
+  reviewHistories: ReviewHistory[],
+  days: number = 7
+): DailyReviewStats[] {
+  const statsMap = new Map<string, { reviewed: number; newCards: number }>();
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    statsMap.set(dateStr, { reviewed: 0, newCards: 0 });
+  }
+
+  reviewHistories.forEach((history) => {
+    const dateStr = new Date(history.reviewDate).toISOString().split('T')[0];
+    if (statsMap.has(dateStr)) {
+      const stats = statsMap.get(dateStr)!;
+      stats.reviewed++;
+      if (history.rating >= 3) {
+        stats.newCards++;
+      }
+    }
+  });
+
+  return Array.from(statsMap.entries()).map(([date, stats]) => ({
+    date,
+    reviewed: stats.reviewed,
+    newCards: stats.newCards,
+  }));
+}
+
+export function getConsecutiveDaysWithoutReview(
+  reviewHistories: ReviewHistory[]
+): number {
+  if (reviewHistories.length === 0) {
+    return Infinity;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const reviewDates = new Set(
+    reviewHistories.map((h) =>
+      new Date(h.reviewDate).toISOString().split('T')[0]
+    )
+  );
+
+  let consecutiveDays = 0;
+  let checkDate = new Date(today);
+
+  while (true) {
+    const dateStr = checkDate.toISOString().split('T')[0];
+    if (reviewDates.has(dateStr)) {
+      break;
+    }
+    consecutiveDays++;
+    checkDate.setDate(checkDate.getDate() - 1);
+
+    if (consecutiveDays > 365) {
+      break;
+    }
+  }
+
+  return consecutiveDays;
+}
+
+export function getTodayReviewedCount(
+  reviewHistories: ReviewHistory[]
+): number {
+  const today = new Date().toISOString().split('T')[0];
+  return reviewHistories.filter(
+    (h) => new Date(h.reviewDate).toISOString().split('T')[0] === today
+  ).length;
 }

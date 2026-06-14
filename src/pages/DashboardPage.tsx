@@ -1,5 +1,6 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import {
   FileText,
   Network,
@@ -9,20 +10,50 @@ import {
   BookOpen,
   ArrowRight,
   Sparkles,
+  Bell,
+  BellOff,
+  AlertTriangle,
+  CheckCircle2,
+  Calendar,
+  Settings,
+  X,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import {
+  getReviewStatsByDay,
+  getConsecutiveDaysWithoutReview,
+  getTodayReviewedCount,
+} from '../utils/algorithm';
+import { useNotification } from '../hooks/useNotification';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { cards, links, getReviewQueue, getReadingHeatmap, readingRecords } = useStore();
+  const { cards, links, getReviewQueue, getReadingHeatmap, readingRecords, reviewHistories } = useStore();
+  const {
+    settings: notificationSettings,
+    permission: notificationPermission,
+    isSupported: notificationSupported,
+    enableNotifications,
+    disableNotifications,
+    setReminderTime,
+    testNotification,
+  } = useNotification();
+
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
 
   const reviewQueue = getReviewQueue();
   const heatmap = getReadingHeatmap();
   const totalReadingTime = readingRecords.reduce((sum, r) => sum + r.duration, 0);
+  const reviewStats = getReviewStatsByDay(reviewHistories, 7);
+  const consecutiveDaysOff = getConsecutiveDaysWithoutReview(reviewHistories);
+  const todayReviewed = getTodayReviewedCount(reviewHistories);
+  const maxReviewedInWeek = Math.max(...reviewStats.map((s) => s.reviewed), 1);
 
   const recentCards = cards.slice(0, 5);
+
+  const showStreakWarning = consecutiveDaysOff >= 2 && reviewQueue.length > 0;
 
   const stats = [
     {
@@ -86,14 +117,63 @@ export default function DashboardPage() {
             你的知识网络正在生长，每一个链接都是智慧的桥梁。
           </p>
         </div>
-        <button
-          onClick={() => navigate('/cards/new')}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          创建新卡片
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowNotificationSettings(true)}
+            className={`p-3 rounded-xl transition-all duration-300 ${
+              notificationSettings.enabled && notificationPermission === 'granted'
+                ? 'bg-amber-gold/20 text-amber-gold hover:bg-amber-gold/30'
+                : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+            }`}
+            title="通知设置"
+          >
+            {notificationSettings.enabled && notificationPermission === 'granted' ? (
+              <Bell className="w-5 h-5" />
+            ) : (
+              <BellOff className="w-5 h-5" />
+            )}
+          </button>
+          <button
+            onClick={() => navigate('/cards/new')}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            创建新卡片
+          </button>
+        </div>
       </div>
+
+      <AnimatePresence>
+        {showStreakWarning && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: -20, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="glass-card p-5 border-rose-review/50 bg-rose-review/10 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-rose-review/20 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-6 h-6 text-rose-review-light" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-display text-lg font-bold text-rose-review-light mb-1">
+                  ⚠️ 连续 {consecutiveDaysOff} 天未复习
+                </h3>
+                <p className="text-sm text-white/60">
+                  你已有 {consecutiveDaysOff} 天没有复习卡片了，坚持复习才能保持记忆效果。
+                  现在还有 {reviewQueue.length} 张卡片等待复习，快开始吧！
+                </p>
+              </div>
+              <button
+                onClick={() => navigate('/review')}
+                className="btn-primary flex-shrink-0"
+              >
+                立即复习
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <motion.div
         variants={container}
@@ -172,53 +252,126 @@ export default function DashboardPage() {
         </motion.div>
 
         <motion.div variants={item} className="space-y-6">
-          <div className="glass-card p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-review/20 to-pink-500/20 flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-rose-review-light" />
+          <div className={`glass-card p-6 relative overflow-hidden ${
+            reviewQueue.length > 0 ? 'border-rose-review/30' : 'border-emerald-mastered/30'
+          }`}>
+            {reviewQueue.length > 0 && (
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-rose-review/20 to-transparent rounded-bl-full" />
+            )}
+            <div className="relative">
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  reviewQueue.length > 0
+                    ? 'bg-gradient-to-br from-rose-review/30 to-pink-500/30'
+                    : 'bg-gradient-to-br from-emerald-mastered/30 to-teal-500/30'
+                }`}>
+                  <BookOpen className={`w-6 h-6 ${
+                    reviewQueue.length > 0 ? 'text-rose-review-light' : 'text-emerald-mastered'
+                  }`} />
+                </div>
+                <div>
+                  <h3 className="font-display text-xl font-bold text-white">
+                    今日复习
+                  </h3>
+                  <p className="text-xs text-white/50">间隔重复学习法</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-display text-lg font-bold text-white">
-                  今日复习
-                </h3>
-                <p className="text-xs text-white/50">间隔重复学习</p>
+
+              <div className="text-center py-4">
+                <div className={`text-5xl font-bold mb-2 ${
+                  reviewQueue.length > 0 ? 'text-rose-review-light' : 'text-emerald-mastered'
+                }`}>
+                  {reviewQueue.length}
+                </div>
+                <p className="text-white/60 text-sm mb-1">
+                  {reviewQueue.length > 0 ? '张卡片待复习' : '今日已完成'}
+                </p>
+                {todayReviewed > 0 && (
+                  <p className="text-emerald-mastered/80 text-xs">
+                    今日已复习 {todayReviewed} 张
+                  </p>
+                )}
               </div>
+
+              {reviewQueue.length > 0 ? (
+                <>
+                  <div className="mb-4">
+                    <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-rose-review to-rose-review-light rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min(reviewQueue.length * 8, 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate('/review')}
+                    className="w-full btn-primary flex items-center justify-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    开始复习
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center justify-center gap-2 text-emerald-mastered">
+                  <CheckCircle2 className="w-5 h-5" />
+                  <span className="font-medium">保持良好节奏！</span>
+                </div>
+              )}
             </div>
-            {reviewQueue.length > 0 ? (
-              <>
-                <div className="mb-4">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-white/60">待复习卡片</span>
-                    <span className="text-rose-review-light font-medium">
-                      {reviewQueue.length} 张
+          </div>
+
+          <div className="glass-card p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-display text-lg font-bold text-white flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-amber-gold" />
+                复习趋势
+              </h3>
+              <span className="text-xs text-white/50">最近 7 天</span>
+            </div>
+            <div className="flex items-end justify-between h-28 gap-1">
+              {reviewStats.map((stat, index) => {
+                const height = maxReviewedInWeek > 0
+                  ? (stat.reviewed / maxReviewedInWeek) * 100
+                  : 0;
+                const isToday = index === reviewStats.length - 1;
+                return (
+                  <div key={stat.date} className="flex-1 flex flex-col items-center gap-2">
+                    <span className={`text-xs font-medium ${
+                      isToday ? 'text-amber-gold' : 'text-white/60'
+                    }`}>
+                      {stat.reviewed}
+                    </span>
+                    <div className="w-full flex-1 flex items-end">
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: `${Math.max(height, 5)}%` }}
+                        transition={{ delay: index * 0.05, duration: 0.5 }}
+                        className={`w-full rounded-t-sm ${
+                          isToday
+                            ? 'bg-gradient-to-t from-amber-gold to-amber-gold-light'
+                            : stat.reviewed > 0
+                            ? 'bg-gradient-to-t from-emerald-mastered/60 to-emerald-mastered'
+                            : 'bg-white/10'
+                        }`}
+                      />
+                    </div>
+                    <span className={`text-xs ${
+                      isToday ? 'text-amber-gold font-medium' : 'text-white/40'
+                    }`}>
+                      {format(new Date(stat.date), 'EEE', { locale: zhCN })}
                     </span>
                   </div>
-                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-rose-review to-rose-review-light rounded-full transition-all duration-500"
-                      style={{
-                        width: `${Math.min(reviewQueue.length * 10, 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={() => navigate('/review')}
-                  className="w-full btn-secondary flex items-center justify-center gap-2"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  开始复习
-                </button>
-              </>
-            ) : (
-              <div className="text-center py-6">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-mastered/20 flex items-center justify-center">
-                  <TrendingUp className="w-8 h-8 text-emerald-mastered" />
-                </div>
-                <p className="text-white/80 font-medium">太棒了！</p>
-                <p className="text-sm text-white/50">今日复习已完成</p>
-              </div>
-            )}
+                );
+              })}
+            </div>
+            <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between text-sm">
+              <span className="text-white/50">本周总计</span>
+              <span className="text-white font-medium">
+                {reviewStats.reduce((sum, s) => sum + s.reviewed, 0)} 次复习
+              </span>
+            </div>
           </div>
 
           <div className="glass-card p-6">
@@ -262,6 +415,163 @@ export default function DashboardPage() {
           </div>
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {showNotificationSettings && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowNotificationSettings(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md"
+            >
+              <div className="glass-card p-6 mx-4">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="font-display text-2xl font-bold text-white flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-gold/20 flex items-center justify-center">
+                      <Bell className="w-5 h-5 text-amber-gold" />
+                    </div>
+                    通知设置
+                  </h2>
+                  <button
+                    onClick={() => setShowNotificationSettings(false)}
+                    className="p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {!notificationSupported ? (
+                  <div className="text-center py-8">
+                    <AlertTriangle className="w-12 h-12 text-rose-review-light mx-auto mb-3" />
+                    <p className="text-white/80">你的浏览器不支持通知功能</p>
+                    <p className="text-sm text-white/50 mt-1">请使用现代浏览器以获得完整体验</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+                      <div>
+                        <h3 className="font-medium text-white">每日复习提醒</h3>
+                        <p className="text-xs text-white/50 mt-1">
+                          在指定时间提醒你复习卡片
+                        </p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (notificationSettings.enabled) {
+                            disableNotifications();
+                          } else {
+                            await enableNotifications();
+                          }
+                        }}
+                        className={`relative w-14 h-8 rounded-full transition-colors duration-300 ${
+                          notificationSettings.enabled && notificationPermission === 'granted'
+                            ? 'bg-amber-gold'
+                            : 'bg-white/20'
+                        }`}
+                      >
+                        <motion.div
+                          animate={{
+                            x: notificationSettings.enabled && notificationPermission === 'granted' ? 28 : 4,
+                          }}
+                          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                          className="absolute top-1 w-6 h-6 rounded-full bg-white shadow-lg"
+                        />
+                      </button>
+                    </div>
+
+                    {notificationPermission === 'denied' && (
+                      <div className="p-4 bg-rose-review/10 border border-rose-review/30 rounded-xl">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="w-5 h-5 text-rose-review-light flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm text-rose-review-light font-medium">
+                              通知权限被拒绝
+                            </p>
+                            <p className="text-xs text-white/50 mt-1">
+                              请在浏览器设置中允许本网站发送通知
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {notificationSettings.enabled && notificationPermission === 'granted' && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="space-y-4 overflow-hidden"
+                      >
+                        <div>
+                          <label className="text-sm text-white/70 mb-2 block">
+                            提醒时间
+                          </label>
+                          <div className="flex items-center gap-3">
+                            <select
+                              value={notificationSettings.hour}
+                              onChange={(e) =>
+                                setReminderTime(
+                                  parseInt(e.target.value),
+                                  notificationSettings.minute
+                                )
+                              }
+                              className="input-field flex-1"
+                            >
+                              {Array.from({ length: 24 }).map((_, h) => (
+                                <option key={h} value={h}>
+                                  {h.toString().padStart(2, '0')} 时
+                                </option>
+                              ))}
+                            </select>
+                            <span className="text-white/50">:</span>
+                            <select
+                              value={notificationSettings.minute}
+                              onChange={(e) =>
+                                setReminderTime(
+                                  notificationSettings.hour,
+                                  parseInt(e.target.value)
+                                )
+                              }
+                              className="input-field flex-1"
+                            >
+                              {[0, 15, 30, 45].map((m) => (
+                                <option key={m} value={m}>
+                                  {m.toString().padStart(2, '0')} 分
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => testNotification()}
+                          className="w-full btn-secondary flex items-center justify-center gap-2"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          发送测试通知
+                        </button>
+                      </motion.div>
+                    )}
+
+                    <div className="pt-4 border-t border-white/10">
+                      <p className="text-xs text-white/40 text-center">
+                        提醒将在每天指定时间发送，仅当有待复习卡片时才会通知
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

@@ -1,4 +1,4 @@
-import { Card, Link, ReviewHistory, ReadingRecord, Achievement, AchievementType, LearningDay, StreakInfo } from '../types';
+import { Card, Link, ReviewHistory, ReadingRecord, Achievement, AchievementType, LearningDay, StreakInfo, WeeklyReport } from '../types';
 
 const STOPWORDS = new Set([
   '的', '了', '和', '是', '在', '我', '有', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去',
@@ -594,4 +594,134 @@ export function createAchievement(type: AchievementType): Achievement {
     icon: def.icon,
     unlockedAt: new Date(),
   };
+}
+
+export function generateWeeklyReport(
+  cards: Card[],
+  links: Link[],
+  readingRecords: ReadingRecord[],
+  reviewHistories: ReviewHistory[]
+): WeeklyReport {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const weekAgo = new Date(now);
+  weekAgo.setDate(weekAgo.getDate() - 6);
+
+  const weekDates = new Set<string>();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekAgo);
+    d.setDate(d.getDate() + i);
+    weekDates.add(getDateKey(d));
+  }
+
+  const startDate = getDateKey(weekAgo);
+  const endDate = getDateKey(now);
+
+  const cardsInWeek = cards.filter(
+    (c) => getDateKey(new Date(c.createdAt)) >= startDate && getDateKey(new Date(c.createdAt)) <= endDate
+  );
+  const linksInWeek = links.filter(
+    (l) => getDateKey(new Date(l.createdAt)) >= startDate && getDateKey(new Date(l.createdAt)) <= endDate
+  );
+  const recordsInWeek = readingRecords.filter(
+    (r) => getDateKey(new Date(r.startTime)) >= startDate && getDateKey(new Date(r.startTime)) <= endDate
+  );
+  const reviewsInWeek = reviewHistories.filter(
+    (h) => getDateKey(new Date(h.reviewDate)) >= startDate && getDateKey(new Date(h.reviewDate)) <= endDate
+  );
+
+  const cardsNeedingReview = cards.filter((card) => {
+    if (!card.lastReviewedAt) return true;
+    const daysSinceReview =
+      (now.getTime() - card.lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24);
+    return daysSinceReview >= card.reviewInterval;
+  });
+  const reviewedCardIds = new Set(reviewsInWeek.map((h) => h.cardId));
+  const totalReviewableCards = new Set(reviewsInWeek.map((h) => h.cardId)).size + cardsNeedingReview.length;
+  const reviewCompletionRate = totalReviewableCards > 0
+    ? Math.round((reviewedCardIds.size / totalReviewableCards) * 100)
+    : 100;
+
+  const cardVisits = new Map<string, number>();
+  recordsInWeek.forEach((r) => {
+    cardVisits.set(r.cardId, (cardVisits.get(r.cardId) || 0) + 1);
+  });
+  const topVisitedCards = Array.from(cardVisits.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([cardId, visitCount]) => {
+      const card = cards.find((c) => c.id === cardId);
+      return {
+        cardId,
+        cardTitle: card?.title || '未知卡片',
+        visitCount,
+      };
+    });
+
+  const learningDays = getLearningDays(readingRecords, reviewHistories);
+  const activeDaysSet = getActiveDays(learningDays);
+  let activeDaysCount = 0;
+  activeDaysSet.forEach((date) => {
+    if (date >= startDate && date <= endDate) {
+      activeDaysCount++;
+    }
+  });
+
+  const totalReadingSeconds = recordsInWeek.reduce((sum, r) => sum + r.duration, 0);
+
+  const streak = calculateCurrentStreak(activeDaysSet);
+
+  return {
+    startDate,
+    endDate,
+    reviewCompletionRate,
+    totalReviews: reviewsInWeek.length,
+    totalReviewCards: reviewedCardIds.size,
+    newCardsCount: cardsInWeek.length,
+    newLinksCount: linksInWeek.length,
+    totalReadingSeconds,
+    topVisitedCards,
+    activeDays: activeDaysCount,
+    currentStreak: streak,
+  };
+}
+
+export function formatWeeklyReportMarkdown(report: WeeklyReport): string {
+  const start = new Date(report.startDate);
+  const end = new Date(report.endDate);
+  const fmt = (d: Date) => `${d.getMonth() + 1}月${d.getDate()}日`;
+
+  const totalMinutes = Math.floor(report.totalReadingSeconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  const readingDisplay = hours > 0 ? `${hours}小时${mins}分钟` : `${mins}分钟`;
+
+  let md = `# 📊 学习周报\n\n`;
+  md += `> 统计周期：${fmt(start)} — ${fmt(end)}\n\n`;
+  md += `---\n\n`;
+  md += `## 📈 总览\n\n`;
+  md += `| 指标 | 数值 |\n`;
+  md += `| --- | --- |\n`;
+  md += `| 复习完成率 | ${report.reviewCompletionRate}% |\n`;
+  md += `| 新增卡片 | ${report.newCardsCount} 张 |\n`;
+  md += `| 新增关联 | ${report.newLinksCount} 条 |\n`;
+  md += `| 总阅读时长 | ${readingDisplay} |\n`;
+  md += `| 活跃天数 | ${report.activeDays} / 7 天 |\n`;
+  md += `| 连续打卡 | ${report.currentStreak} 天 |\n`;
+  md += `| 复习次数 | ${report.totalReviews} 次 |\n\n`;
+
+  md += `## 🏆 最常访问卡片 Top ${report.topVisitedCards.length}\n\n`;
+  if (report.topVisitedCards.length > 0) {
+    md += `| 排名 | 卡片 | 访问次数 |\n`;
+    md += `| --- | --- | --- |\n`;
+    report.topVisitedCards.forEach((item, i) => {
+      md += `| ${i + 1} | ${item.cardTitle} | ${item.visitCount} 次 |\n`;
+    });
+  } else {
+    md += `暂无阅读记录\n`;
+  }
+  md += `\n---\n\n`;
+  md += `*由知识库应用自动生成*\n`;
+
+  return md;
 }

@@ -14,6 +14,7 @@ import {
   Achievement,
   StreakInfo,
   AchievementType,
+  WeeklyReport,
 } from '../types';
 import { db } from '../db';
 import {
@@ -28,6 +29,8 @@ import {
   getStreakInfo,
   checkNewAchievements,
   createAchievement,
+  generateWeeklyReport,
+  formatWeeklyReportMarkdown,
 } from '../utils/algorithm';
 import { generateMockData } from '../utils/mockData';
 
@@ -98,6 +101,8 @@ interface StoreState {
   getStreakInfo: () => StreakInfo;
   checkAchievements: () => Promise<Achievement[]>;
   clearNewAchievements: () => void;
+  getWeeklyReport: () => WeeklyReport;
+  getWeeklyReportMarkdown: () => string;
 }
 
 const generateId = () =>
@@ -1066,5 +1071,16 @@ export const useStore = create<StoreState>((set, get) => ({
 
   clearNewAchievements: () => {
     set({ newlyUnlockedAchievements: [] });
+  },
+
+  getWeeklyReport: () => {
+    const { cards, links, readingRecords, reviewHistories } = get();
+    return generateWeeklyReport(cards, links, readingRecords, reviewHistories);
+  },
+
+  getWeeklyReportMarkdown: () => {
+    const { cards, links, readingRecords, reviewHistories } = get();
+    const report = generateWeeklyReport(cards, links, readingRecords, reviewHistories);
+    return formatWeeklyReportMarkdown(report);
   },
 }));

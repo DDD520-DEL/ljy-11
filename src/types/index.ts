@@ -114,6 +114,20 @@ export interface LearningDay {
   cardsReviewed: string[];
 }
 
+export interface WeeklyReport {
+  startDate: string;
+  endDate: string;
+  reviewCompletionRate: number;
+  totalReviews: number;
+  totalReviewCards: number;
+  newCardsCount: number;
+  newLinksCount: number;
+  totalReadingSeconds: number;
+  topVisitedCards: { cardId: string; cardTitle: string; visitCount: number }[];
+  activeDays: number;
+  currentStreak: number;
+}
+
 export type AchievementType = 'streak_7' | 'streak_30' | 'streak_100';
 
 export interface StreakInfo {

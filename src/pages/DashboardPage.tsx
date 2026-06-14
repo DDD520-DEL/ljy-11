@@ -19,6 +19,7 @@ import {
   X,
   Flame,
   Trophy,
+  BarChart3,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -37,6 +38,7 @@ import {
 } from '../utils/algorithm';
 import { useNotification } from '../hooks/useNotification';
 import { AchievementType } from '../types';
+import WeeklyReportModal from '../components/WeeklyReportModal';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -62,6 +64,7 @@ export default function DashboardPage() {
   } = useNotification();
 
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
+  const [showWeeklyReport, setShowWeeklyReport] = useState(false);
 
   const reviewQueue = getReviewQueue();
   const heatmap = getReadingHeatmap();
@@ -200,6 +203,14 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowWeeklyReport(true)}
+            className="p-3 rounded-xl transition-all duration-300 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white flex items-center gap-2"
+            title="生成周报"
+          >
+            <BarChart3 className="w-5 h-5" />
+            <span className="text-sm font-medium hidden sm:inline">生成周报</span>
+          </button>
           <button
             onClick={() => setShowNotificationSettings(true)}
             className={`p-3 rounded-xl transition-all duration-300 ${
@@ -775,6 +786,8 @@ export default function DashboardPage() {
           </>
         )}
       </AnimatePresence>
+
+      <WeeklyReportModal isOpen={showWeeklyReport} onClose={() => setShowWeeklyReport(false)} />
     </motion.div>
   );
 }

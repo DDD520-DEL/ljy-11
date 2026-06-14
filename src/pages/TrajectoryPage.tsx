@@ -11,16 +11,19 @@ import {
   Zap,
   Flame,
   CheckCircle2,
+  Download,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { format, formatDistanceToNow, subDays } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { getLearningDays, getActiveDays } from '../utils/algorithm';
+import WeeklyReportModal from '../components/WeeklyReportModal';
 
 export default function TrajectoryPage() {
   const navigate = useNavigate();
   const { readingRecords, cards, getReadingHeatmap, reviewHistories, getStreakInfo } = useStore();
   const [timeRange, setTimeRange] = useState<'7' | '30' | '90'>('30');
+  const [showWeeklyReport, setShowWeeklyReport] = useState(false);
 
   const heatmap = getReadingHeatmap();
   const streakInfo = getStreakInfo();
@@ -127,6 +130,14 @@ export default function TrajectoryPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={() => setShowWeeklyReport(true)}
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-all bg-white/10 text-white/70 hover:bg-white/20 flex items-center gap-2"
+            title="生成周报"
+          >
+            <Download className="w-4 h-4" />
+            生成周报
+          </button>
           {(['7', '30', '90'] as const).map((range) => (
             <button
               key={range}
@@ -430,6 +441,8 @@ export default function TrajectoryPage() {
           </div>
         </div>
       </motion.div>
+
+      <WeeklyReportModal isOpen={showWeeklyReport} onClose={() => setShowWeeklyReport(false)} />
     </motion.div>
   );
 }

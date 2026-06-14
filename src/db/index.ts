@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import { Card, Link, ReadingRecord, ImportSource, ReviewHistory, CardVersion } from '../types';
+import { Card, Link, ReadingRecord, ImportSource, ReviewHistory, CardVersion, Achievement } from '../types';
 
 export class KnowledgeBaseDB extends Dexie {
   cards!: Table<Card, string>;
@@ -8,6 +8,7 @@ export class KnowledgeBaseDB extends Dexie {
   importSources!: Table<ImportSource, string>;
   reviewHistories!: Table<ReviewHistory, string>;
   cardVersions!: Table<CardVersion, string>;
+  achievements!: Table<Achievement, string>;
 
   constructor() {
     super('KnowledgeBaseDB');
@@ -25,6 +26,15 @@ export class KnowledgeBaseDB extends Dexie {
       importSources: 'id, type, importedAt, processed',
       reviewHistories: 'id, cardId, reviewDate',
       cardVersions: 'id, cardId, createdAt',
+    });
+    this.version(3).stores({
+      cards: 'id, title, createdAt, updatedAt, lastReviewedAt',
+      links: 'id, sourceCardId, targetCardId, createdAt',
+      readingRecords: 'id, cardId, startTime, endTime, fromCardId',
+      importSources: 'id, type, importedAt, processed',
+      reviewHistories: 'id, cardId, reviewDate',
+      cardVersions: 'id, cardId, createdAt',
+      achievements: 'id, type, unlockedAt',
     });
   }
 }

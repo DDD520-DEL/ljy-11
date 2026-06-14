@@ -9,17 +9,29 @@ import {
   FileText,
   TrendingUp,
   Zap,
+  Flame,
+  CheckCircle2,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { format, formatDistanceToNow, subDays } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { getLearningDays, getActiveDays } from '../utils/algorithm';
 
 export default function TrajectoryPage() {
   const navigate = useNavigate();
-  const { readingRecords, cards, getReadingHeatmap } = useStore();
+  const { readingRecords, cards, getReadingHeatmap, reviewHistories, getStreakInfo } = useStore();
   const [timeRange, setTimeRange] = useState<'7' | '30' | '90'>('30');
 
   const heatmap = getReadingHeatmap();
+  const streakInfo = getStreakInfo();
+  const learningDays = useMemo(
+    () => getLearningDays(readingRecords, reviewHistories),
+    [readingRecords, reviewHistories]
+  );
+  const activeDays = useMemo(
+    () => getActiveDays(learningDays),
+    [learningDays]
+  );
 
   const filteredRecords = useMemo(() => {
     const days = parseInt(timeRange);
@@ -137,24 +149,24 @@ export default function TrajectoryPage() {
 
         <div className="stat-card">
           <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
-              <FileText className="w-6 h-6 text-blue-400" />
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center">
+              <Flame className="w-6 h-6 text-orange-400" />
             </div>
           </div>
           <p className="text-3xl font-bold text-white mb-1">
-            {filteredRecords.length}
+            {streakInfo.currentStreak}
           </p>
-          <p className="text-sm text-white/50">阅读次数</p>
+          <p className="text-sm text-white/50">连续打卡 (天)</p>
         </div>
 
         <div className="stat-card">
           <div className="flex items-start justify-between mb-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-mastered/20 to-teal-500/20 flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-emerald-mastered" />
+              <CheckCircle2 className="w-6 h-6 text-emerald-mastered" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white mb-1">{avgDuration}</p>
-          <p className="text-sm text-white/50">平均时长 (秒)</p>
+          <p className="text-3xl font-bold text-white mb-1">{activeDays.size}</p>
+          <p className="text-sm text-white/50">活跃天数</p>
         </div>
 
         <div className="stat-card">
@@ -174,7 +186,7 @@ export default function TrajectoryPage() {
         <motion.div variants={item} className="lg:col-span-2 glass-card p-6">
           <h3 className="font-display text-lg font-bold text-white mb-6 flex items-center gap-2">
             <Calendar className="w-5 h-5 text-amber-gold" />
-            阅读热力图
+            打卡热力图
           </h3>
           <div className="overflow-x-auto">
             <div className="grid grid-cols-[auto_repeat(53,1fr)] gap-1 min-w-[600px]">
@@ -191,10 +203,33 @@ export default function TrajectoryPage() {
               {Array.from({ length: parseInt(timeRange) }).map((_, i) => {
                 const date = subDays(new Date(), parseInt(timeRange) - 1 - i);
                 const dateStr = format(date, 'yyyy-MM-dd');
-                const minutes = Math.floor((heatmap.get(dateStr) || 0) / 60);
+                const dayData = learningDays.get(dateStr);
+                const isActive = activeDays.has(dateStr);
+                const minutes = dayData ? Math.floor(dayData.duration / 60) : 0;
+                const readCount = dayData?.readCount || 0;
+                const reviewCount = dayData?.reviewCount || 0;
                 const intensity = Math.min(minutes / 60, 1);
                 const isFirstOfMonth = date.getDate() === 1;
                 const weekStart = date.getDay() === 0;
+                const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
+                
+                let bgColor = 'rgba(255, 255, 255, 0.05)';
+                let borderColor = 'transparent';
+                
+                if (isActive) {
+                  if (intensity > 0.6) {
+                    bgColor = 'rgba(245, 158, 11, 0.9)';
+                  } else if (intensity > 0.3) {
+                    bgColor = 'rgba(245, 158, 11, 0.6)';
+                  } else {
+                    bgColor = 'rgba(245, 158, 11, 0.3)';
+                  }
+                }
+                
+                if (isToday) {
+                  borderColor = 'rgba(245, 158, 11, 1)';
+                }
+                
                 return (
                   <div key={i} className="relative">
                     {isFirstOfMonth && (
@@ -203,35 +238,45 @@ export default function TrajectoryPage() {
                       </span>
                     )}
                     <div
-                      className={`aspect-square rounded-sm transition-all duration-300 hover:scale-125 ${
+                      className={`aspect-square rounded-sm transition-all duration-300 hover:scale-125 relative ${
                         weekStart ? 'mt-4' : ''
                       }`}
                       style={{
-                        backgroundColor:
-                          intensity > 0
-                            ? `rgba(245, 158, 11, ${0.2 + intensity * 0.8})`
-                            : 'rgba(255, 255, 255, 0.05)',
+                        backgroundColor: bgColor,
+                        border: `2px solid ${borderColor}`,
                       }}
-                      title={`${dateStr}: ${minutes}分钟`}
-                    />
+                      title={`${dateStr}\n阅读: ${readCount}次 | 复习: ${reviewCount}次\n时长: ${minutes}分钟${isActive ? '\n✅ 已打卡' : ''}`}
+                    >
+                      {isActive && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <CheckCircle2 className="w-3 h-3 text-white drop-shadow-lg" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
             </div>
-            <div className="flex items-center justify-end gap-2 mt-4 text-xs text-white/40">
-              <span>少</span>
-              <div className="flex gap-1">
-                {[0.2, 0.4, 0.6, 0.8, 1].map((intensity) => (
-                  <div
-                    key={intensity}
-                    className="w-3 h-3 rounded-sm"
-                    style={{
-                      backgroundColor: `rgba(245, 158, 11, ${intensity})`,
-                    }}
-                  />
-                ))}
+            <div className="flex items-center justify-between mt-4 text-xs text-white/40">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-white/10" />
+                  <span>未打卡</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-amber-gold/30" />
+                  <span>已打卡</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-amber-gold" />
+                  <span>深度学习</span>
+                </div>
               </div>
-              <span>多</span>
+              <div className="flex items-center gap-2">
+                <span>
+                  打卡率: {Math.round((activeDays.size / parseInt(timeRange)) * 100)}%
+                </span>
+              </div>
             </div>
           </div>
         </motion.div>

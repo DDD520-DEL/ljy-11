@@ -95,3 +95,32 @@ export interface TagStats {
   cards: Card[];
   lastUsedAt: Date;
 }
+
+export interface Achievement {
+  id: string;
+  type: 'streak_7' | 'streak_30' | 'streak_100';
+  name: string;
+  description: string;
+  icon: string;
+  unlockedAt: Date;
+}
+
+export interface LearningDay {
+  date: string;
+  readCount: number;
+  reviewCount: number;
+  duration: number;
+  cardsRead: string[];
+  cardsReviewed: string[];
+}
+
+export type AchievementType = 'streak_7' | 'streak_30' | 'streak_100';
+
+export interface StreakInfo {
+  currentStreak: number;
+  longestStreak: number;
+  weekDuration: number;
+  totalDuration: number;
+  activeDays: number;
+  achievements: Achievement[];
+}

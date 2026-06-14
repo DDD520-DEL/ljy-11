@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FileText,
   Network,
@@ -17,6 +17,8 @@ import {
   Calendar,
   Settings,
   X,
+  Flame,
+  Trophy,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -29,12 +31,24 @@ import {
   getLinksWeekOverWeek,
   getReadingTimeWeekOverWeek,
   getReviewQueueDayOverDay,
+  ACHIEVEMENT_DEFINITIONS,
 } from '../utils/algorithm';
 import { useNotification } from '../hooks/useNotification';
+import { AchievementType } from '../types';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { cards, links, getReviewQueue, getReadingHeatmap, readingRecords, reviewHistories } = useStore();
+  const { 
+    cards, 
+    links, 
+    getReviewQueue, 
+    getReadingHeatmap, 
+    readingRecords, 
+    reviewHistories,
+    getStreakInfo,
+    newlyUnlockedAchievements,
+    clearNewAchievements,
+  } = useStore();
   const {
     settings: notificationSettings,
     permission: notificationPermission,
@@ -49,11 +63,21 @@ export default function DashboardPage() {
 
   const reviewQueue = getReviewQueue();
   const heatmap = getReadingHeatmap();
+  const streakInfo = getStreakInfo();
   const totalReadingTime = readingRecords.reduce((sum, r) => sum + r.duration, 0);
   const reviewStats = getReviewStatsByDay(reviewHistories, 7);
   const consecutiveDaysOff = getConsecutiveDaysWithoutReview(reviewHistories);
   const todayReviewed = getTodayReviewedCount(reviewHistories);
   const maxReviewedInWeek = Math.max(...reviewStats.map((s) => s.reviewed), 1);
+
+  useEffect(() => {
+    if (newlyUnlockedAchievements.length > 0) {
+      const timer = setTimeout(() => {
+        clearNewAchievements();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [newlyUnlockedAchievements, clearNewAchievements]);
 
   const cardsGrowth = getCardsWeekOverWeek(cards);
   const linksGrowth = getLinksWeekOverWeek(links);
@@ -89,10 +113,28 @@ export default function DashboardPage() {
       periodLabel: '较上周',
     },
     {
+      icon: Flame,
+      label: '连续打卡',
+      value: `${streakInfo.currentStreak}天`,
+      color: 'from-orange-500 to-red-500',
+      change: `最长${streakInfo.longestStreak}天`,
+      growth: { changePercent: 0, isPositive: true },
+      periodLabel: '历史最长',
+    },
+    {
       icon: Clock,
-      label: '阅读时长',
-      value: `${Math.floor(totalReadingTime / 60)}分钟`,
+      label: '本周学习',
+      value: `${Math.floor(streakInfo.weekDuration / 60)}分钟`,
       color: 'from-emerald-mastered to-teal-500',
+      change: `${streakInfo.activeDays}天活跃`,
+      growth: { changePercent: 0, isPositive: true },
+      periodLabel: '活跃天数',
+    },
+    {
+      icon: BookOpen,
+      label: '总阅读时长',
+      value: `${Math.floor(totalReadingTime / 60)}分钟`,
+      color: 'from-purple-500 to-indigo-500',
       change: formatGrowth(readingGrowth),
       growth: readingGrowth,
       periodLabel: '较上周',
@@ -197,11 +239,48 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {newlyUnlockedAchievements.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -50, scale: 0.8 }}
+            className="fixed top-20 right-4 z-50 space-y-3"
+          >
+            {newlyUnlockedAchievements.map((achievement) => (
+              <motion.div
+                key={achievement.id}
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="glass-card p-4 border-amber-gold/50 bg-gradient-to-r from-amber-gold/20 to-transparent min-w-[280px]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="text-4xl animate-bounce">
+                    {achievement.icon}
+                  </div>
+                  <div>
+                    <h4 className="font-display font-bold text-amber-gold">
+                      🎉 成就解锁！
+                    </h4>
+                    <p className="font-medium text-white">
+                      {achievement.name}
+                    </p>
+                    <p className="text-xs text-white/60">
+                      {achievement.description}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.div
         variants={container}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
       >
         {stats.map((stat, index) => {
           const Icon = stat.icon;
@@ -442,6 +521,81 @@ export default function DashboardPage() {
                 <span>多</span>
               </div>
               <span>今天</span>
+            </div>
+          </div>
+
+          <div className="glass-card p-6">
+            <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-amber-gold" />
+              成就徽章
+            </h3>
+            <div className="space-y-3">
+              {(Object.keys(ACHIEVEMENT_DEFINITIONS) as AchievementType[]).map((type) => {
+                const def = ACHIEVEMENT_DEFINITIONS[type];
+                const unlocked = streakInfo.achievements.some((a) => a.type === type);
+                const progress = Math.min(
+                  (streakInfo.currentStreak / def.days) * 100,
+                  100
+                );
+                return (
+                  <div
+                    key={type}
+                    className={`p-3 rounded-xl transition-all duration-300 ${
+                      unlocked
+                        ? 'bg-amber-gold/20 border border-amber-gold/40'
+                        : 'bg-white/5 border border-white/10'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`text-3xl transition-all duration-300 ${
+                          unlocked ? 'scale-110' : 'opacity-40 grayscale'
+                        }`}
+                      >
+                        {def.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span
+                            className={`font-medium text-sm ${
+                              unlocked ? 'text-amber-gold' : 'text-white/60'
+                            }`}
+                          >
+                            {def.name}
+                          </span>
+                          {unlocked ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-mastered" />
+                          ) : (
+                            <span className="text-xs text-white/40">
+                              {streakInfo.currentStreak}/{def.days}天
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-white/40 mb-2">
+                          {def.description}
+                        </p>
+                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${progress}%` }}
+                            transition={{ duration: 0.5 }}
+                            className={`h-full rounded-full ${
+                              unlocked
+                                ? 'bg-gradient-to-r from-amber-gold to-amber-gold-light'
+                                : 'bg-gradient-to-r from-amber-gold/50 to-amber-gold-light/50'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-4 pt-4 border-t border-white/10 text-center">
+              <p className="text-sm text-white/50">
+                已解锁 <span className="text-amber-gold font-medium">{streakInfo.achievements.length}</span> / {Object.keys(ACHIEVEMENT_DEFINITIONS).length} 个成就
+              </p>
             </div>
           </div>
         </motion.div>

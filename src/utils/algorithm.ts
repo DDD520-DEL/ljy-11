@@ -1,4 +1,4 @@
-import { Card, Link, ReviewHistory, ReadingRecord } from '../types';
+import { Card, Link, ReviewHistory, ReadingRecord, Achievement, AchievementType, LearningDay, StreakInfo } from '../types';
 
 export function calculateNextReview(card: Card, rating: number): Partial<Card> {
   let { easeFactor, reviewInterval, reviewCount } = card;
@@ -369,5 +369,181 @@ export function getReviewQueueDayOverDay(cards: Card[]): PeriodComparison {
     previousPeriod: yesterdayCount,
     changePercent,
     isPositive: changePercent <= 0,
+  };
+}
+
+export function getLearningDays(
+  readingRecords: ReadingRecord[],
+  reviewHistories: ReviewHistory[]
+): Map<string, LearningDay> {
+  const learningDays = new Map<string, LearningDay>();
+
+  readingRecords.forEach((record) => {
+    const date = getDateKey(new Date(record.startTime));
+    const day = learningDays.get(date) || {
+      date,
+      readCount: 0,
+      reviewCount: 0,
+      duration: 0,
+      cardsRead: [],
+      cardsReviewed: [],
+    };
+    day.readCount++;
+    day.duration += record.duration;
+    if (!day.cardsRead.includes(record.cardId)) {
+      day.cardsRead.push(record.cardId);
+    }
+    learningDays.set(date, day);
+  });
+
+  reviewHistories.forEach((history) => {
+    const date = getDateKey(new Date(history.reviewDate));
+    const day = learningDays.get(date) || {
+      date,
+      readCount: 0,
+      reviewCount: 0,
+      duration: 0,
+      cardsRead: [],
+      cardsReviewed: [],
+    };
+    day.reviewCount++;
+    if (!day.cardsReviewed.includes(history.cardId)) {
+      day.cardsReviewed.push(history.cardId);
+    }
+    learningDays.set(date, day);
+  });
+
+  return learningDays;
+}
+
+export function getActiveDays(learningDays: Map<string, LearningDay>): Set<string> {
+  const activeDays = new Set<string>();
+  learningDays.forEach((day, date) => {
+    if (day.cardsRead.length > 0 || day.cardsReviewed.length > 0) {
+      activeDays.add(date);
+    }
+  });
+  return activeDays;
+}
+
+export function calculateCurrentStreak(activeDays: Set<string>): number {
+  let streak = 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = 0; i < 365; i++) {
+    const checkDate = new Date(today);
+    checkDate.setDate(checkDate.getDate() - i);
+    const dateStr = getDateKey(checkDate);
+    
+    if (activeDays.has(dateStr)) {
+      streak++;
+    } else if (i > 0) {
+      break;
+    }
+  }
+
+  return streak;
+}
+
+export function calculateLongestStreak(activeDays: Set<string>): number {
+  if (activeDays.size === 0) return 0;
+
+  const sortedDates = Array.from(activeDays).sort();
+  let longestStreak = 1;
+  let currentStreak = 1;
+
+  for (let i = 1; i < sortedDates.length; i++) {
+    const prevDate = new Date(sortedDates[i - 1]);
+    const currDate = new Date(sortedDates[i]);
+    const diffDays = Math.round(
+      (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (diffDays === 1) {
+      currentStreak++;
+      longestStreak = Math.max(longestStreak, currentStreak);
+    } else {
+      currentStreak = 1;
+    }
+  }
+
+  return longestStreak;
+}
+
+export function calculateWeekDuration(readingRecords: ReadingRecord[]): number {
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  
+  return readingRecords
+    .filter((r) => new Date(r.startTime) >= weekAgo)
+    .reduce((sum, r) => sum + r.duration, 0);
+}
+
+export function getStreakInfo(
+  readingRecords: ReadingRecord[],
+  reviewHistories: ReviewHistory[],
+  achievements: Achievement[]
+): StreakInfo {
+  const learningDays = getLearningDays(readingRecords, reviewHistories);
+  const activeDays = getActiveDays(learningDays);
+  
+  return {
+    currentStreak: calculateCurrentStreak(activeDays),
+    longestStreak: calculateLongestStreak(activeDays),
+    weekDuration: calculateWeekDuration(readingRecords),
+    totalDuration: readingRecords.reduce((sum, r) => sum + r.duration, 0),
+    activeDays: activeDays.size,
+    achievements,
+  };
+}
+
+export const ACHIEVEMENT_DEFINITIONS: Record<AchievementType, { name: string; description: string; icon: string; days: number }> = {
+  streak_7: {
+    name: '坚持一周',
+    description: '连续 7 天每天至少阅读或复习一张卡片',
+    icon: '🔥',
+    days: 7,
+  },
+  streak_30: {
+    name: '月度达人',
+    description: '连续 30 天每天至少阅读或复习一张卡片',
+    icon: '⭐',
+    days: 30,
+  },
+  streak_100: {
+    name: '百日修行',
+    description: '连续 100 天每天至少阅读或复习一张卡片',
+    icon: '👑',
+    days: 100,
+  },
+};
+
+export function checkNewAchievements(
+  currentStreak: number,
+  existingAchievements: Achievement[]
+): AchievementType[] {
+  const newAchievements: AchievementType[] = [];
+  const existingTypes = new Set(existingAchievements.map((a) => a.type));
+
+  (Object.keys(ACHIEVEMENT_DEFINITIONS) as AchievementType[]).forEach((type) => {
+    const def = ACHIEVEMENT_DEFINITIONS[type];
+    if (currentStreak >= def.days && !existingTypes.has(type)) {
+      newAchievements.push(type);
+    }
+  });
+
+  return newAchievements;
+}
+
+export function createAchievement(type: AchievementType): Achievement {
+  const def = ACHIEVEMENT_DEFINITIONS[type];
+  return {
+    id: `${type}_${Date.now().toString(36)}`,
+    type,
+    name: def.name,
+    description: def.description,
+    icon: def.icon,
+    unlockedAt: new Date(),
   };
 }

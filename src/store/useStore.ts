@@ -11,6 +11,9 @@ import {
   LinkSuggestion,
   TagStats,
   CardVersion,
+  Achievement,
+  StreakInfo,
+  AchievementType,
 } from '../types';
 import { db } from '../db';
 import {
@@ -21,6 +24,10 @@ import {
   tokenize,
   calculateTFIDF,
   calculateCosineSimilarity,
+  getStreakInfo,
+  checkNewAchievements,
+  createAchievement,
+  getLearningDays,
 } from '../utils/algorithm';
 import { generateMockData } from '../utils/mockData';
 
@@ -31,6 +38,7 @@ interface StoreState {
   importSources: ImportSource[];
   reviewHistories: ReviewHistory[];
   cardVersions: CardVersion[];
+  achievements: Achievement[];
   currentCardId: string | null;
   isLoading: boolean;
   selectedTags: string[];
@@ -40,6 +48,7 @@ interface StoreState {
     startTime: Date;
     fromCardId?: string;
   } | null;
+  newlyUnlockedAchievements: Achievement[];
 
   initializeData: () => Promise<void>;
   loadAllData: () => Promise<void>;
@@ -85,6 +94,10 @@ interface StoreState {
   batchRemoveTags: (cardIds: string[], tags: string[]) => Promise<void>;
   exportCardsToJSON: (cardIds: string[]) => string;
   exportCardsToMarkdown: (cardIds: string[]) => string;
+
+  getStreakInfo: () => StreakInfo;
+  checkAchievements: () => Promise<Achievement[]>;
+  clearNewAchievements: () => void;
 }
 
 const generateId = () =>
@@ -97,11 +110,13 @@ export const useStore = create<StoreState>((set, get) => ({
   importSources: [],
   reviewHistories: [],
   cardVersions: [],
+  achievements: [],
   currentCardId: null,
   isLoading: true,
   selectedTags: [],
   searchQuery: '',
   currentReadingSession: null,
+  newlyUnlockedAchievements: [],
 
   initializeData: async () => {
     const cards = await db.cards.count();
@@ -117,7 +132,7 @@ export const useStore = create<StoreState>((set, get) => ({
 
   loadAllData: async () => {
     set({ isLoading: true });
-    const [cards, links, readingRecords, importSources, reviewHistories, cardVersions] =
+    const [cards, links, readingRecords, importSources, reviewHistories, cardVersions, achievements] =
       await Promise.all([
         db.cards.orderBy('updatedAt').reverse().toArray(),
         db.links.toArray(),
@@ -125,6 +140,7 @@ export const useStore = create<StoreState>((set, get) => ({
         db.importSources.orderBy('importedAt').reverse().toArray(),
         db.reviewHistories.toArray(),
         db.cardVersions.orderBy('createdAt').reverse().toArray(),
+        db.achievements.orderBy('unlockedAt').reverse().toArray(),
       ]);
     set({
       cards,
@@ -133,6 +149,7 @@ export const useStore = create<StoreState>((set, get) => ({
       importSources,
       reviewHistories,
       cardVersions,
+      achievements,
       isLoading: false,
     });
   },
@@ -409,6 +426,7 @@ export const useStore = create<StoreState>((set, get) => ({
       };
       await db.readingRecords.add(record);
       await get().loadAllData();
+      await get().checkAchievements();
     }
 
     set({ currentReadingSession: null });
@@ -470,6 +488,7 @@ export const useStore = create<StoreState>((set, get) => ({
     };
     await db.reviewHistories.add(history);
     await get().loadAllData();
+    await get().checkAchievements();
   },
 
   importBookmarks: async (file) => {
@@ -982,5 +1001,38 @@ export const useStore = create<StoreState>((set, get) => ({
     });
 
     return markdown;
+  },
+
+  getStreakInfo: () => {
+    const { readingRecords, reviewHistories, achievements } = get();
+    return getStreakInfo(readingRecords, reviewHistories, achievements);
+  },
+
+  checkAchievements: async () => {
+    const { readingRecords, reviewHistories, achievements } = get();
+    const streakInfo = getStreakInfo(readingRecords, reviewHistories, achievements);
+    const newAchievementTypes = checkNewAchievements(
+      streakInfo.currentStreak,
+      achievements
+    );
+
+    if (newAchievementTypes.length === 0) {
+      return [];
+    }
+
+    const newAchievements: Achievement[] = [];
+    for (const type of newAchievementTypes) {
+      const achievement = createAchievement(type);
+      await db.achievements.add(achievement);
+      newAchievements.push(achievement);
+    }
+
+    await get().loadAllData();
+    set({ newlyUnlockedAchievements: newAchievements });
+    return newAchievements;
+  },
+
+  clearNewAchievements: () => {
+    set({ newlyUnlockedAchievements: [] });
   },
 }));

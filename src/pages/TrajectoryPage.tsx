@@ -32,6 +32,18 @@ export default function TrajectoryPage() {
     () => getActiveDays(learningDays),
     [learningDays]
   );
+  const activeDaysInRange = useMemo(() => {
+    const days = parseInt(timeRange);
+    const cutoff = subDays(new Date(), days - 1);
+    const cutoffStr = format(cutoff, 'yyyy-MM-dd');
+    let count = 0;
+    activeDays.forEach((date) => {
+      if (date >= cutoffStr) {
+        count++;
+      }
+    });
+    return count;
+  }, [activeDays, timeRange]);
 
   const filteredRecords = useMemo(() => {
     const days = parseInt(timeRange);
@@ -274,7 +286,7 @@ export default function TrajectoryPage() {
               </div>
               <div className="flex items-center gap-2">
                 <span>
-                  打卡率: {Math.round((activeDays.size / parseInt(timeRange)) * 100)}%
+                  打卡率: {Math.round((activeDaysInRange / parseInt(timeRange)) * 100)}%
                 </span>
               </div>
             </div>

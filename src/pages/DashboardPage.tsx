@@ -32,6 +32,8 @@ import {
   getReadingTimeWeekOverWeek,
   getReviewQueueDayOverDay,
   ACHIEVEMENT_DEFINITIONS,
+  getLearningDays,
+  getActiveDays,
 } from '../utils/algorithm';
 import { useNotification } from '../hooks/useNotification';
 import { AchievementType } from '../types';
@@ -69,6 +71,22 @@ export default function DashboardPage() {
   const consecutiveDaysOff = getConsecutiveDaysWithoutReview(reviewHistories);
   const todayReviewed = getTodayReviewedCount(reviewHistories);
   const maxReviewedInWeek = Math.max(...reviewStats.map((s) => s.reviewed), 1);
+
+  const weekActiveDays = (() => {
+    const learningDays = getLearningDays(readingRecords, reviewHistories);
+    const activeDays = getActiveDays(learningDays);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 6);
+    weekAgo.setHours(0, 0, 0, 0);
+    const cutoffStr = format(weekAgo, 'yyyy-MM-dd');
+    let count = 0;
+    activeDays.forEach((date) => {
+      if (date >= cutoffStr) {
+        count++;
+      }
+    });
+    return count;
+  })();
 
   useEffect(() => {
     if (newlyUnlockedAchievements.length > 0) {
@@ -126,7 +144,7 @@ export default function DashboardPage() {
       label: '本周学习',
       value: `${Math.floor(streakInfo.weekDuration / 60)}分钟`,
       color: 'from-emerald-mastered to-teal-500',
-      change: `${streakInfo.activeDays}天活跃`,
+      change: `${weekActiveDays}天活跃`,
       growth: { changePercent: 0, isPositive: true },
       periodLabel: '活跃天数',
     },

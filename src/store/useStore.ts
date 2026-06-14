@@ -21,13 +21,13 @@ import {
   calculateLinkDensity,
   calculateReviewPriority,
   parseWikiLinks,
-  tokenize,
+  tokenizeWithFilter,
+  extractCommonKeywords,
   calculateTFIDF,
   calculateCosineSimilarity,
   getStreakInfo,
   checkNewAchievements,
   createAchievement,
-  getLearningDays,
 } from '../utils/algorithm';
 import { generateMockData } from '../utils/mockData';
 
@@ -66,7 +66,7 @@ interface StoreState {
   createLink: (sourceId: string, targetId: string) => Promise<void>;
   deleteLink: (linkId: string) => Promise<void>;
   getCardLinks: (cardId: string) => { outgoing: Link[]; incoming: Link[] };
-  suggestLinks: (content: string) => Promise<LinkSuggestion[]>;
+  suggestLinks: (content: string, currentCardId?: string) => Promise<LinkSuggestion[]>;
 
   startReading: (cardId: string, fromCardId?: string) => Promise<void>;
   endReading: () => Promise<void>;
@@ -348,19 +348,41 @@ export const useStore = create<StoreState>((set, get) => ({
     };
   },
 
-  suggestLinks: async (content) => {
-    const { cards } = get();
+  suggestLinks: async (content, currentCardId) => {
+    const { cards, links } = get();
     if (cards.length < 2) return [];
 
-    const contentTokens = tokenize(content);
-    const allTokens = cards.map((c) => tokenize(c.title + ' ' + c.content));
+    const contentTokens = tokenizeWithFilter(content);
+
+    const linkedCardIds = new Set<string>();
+    if (currentCardId) {
+      links.forEach((link) => {
+        if (link.sourceCardId === currentCardId) {
+          linkedCardIds.add(link.targetCardId);
+        }
+        if (link.targetCardId === currentCardId) {
+          linkedCardIds.add(link.sourceCardId);
+        }
+      });
+    }
+
+    const otherCards = cards.filter(
+      (c) => c.id !== currentCardId && !linkedCardIds.has(c.id)
+    );
+
+    if (otherCards.length === 0) return [];
+
+    const allTokens = otherCards.map((c) =>
+      tokenizeWithFilter(c.title + ' ' + c.content)
+    );
     allTokens.push(contentTokens);
 
     const tfidfVectors = calculateTFIDF(allTokens);
     const contentVector = tfidfVectors[tfidfVectors.length - 1];
 
-    const suggestions: LinkSuggestion[] = cards
+    const suggestions: LinkSuggestion[] = otherCards
       .map((card, index) => {
+        const cardTokens = tokenizeWithFilter(card.title + ' ' + card.content);
         const cardVector = tfidfVectors[index];
         const similarity = calculateCosineSimilarity(contentVector, cardVector);
 
@@ -368,25 +390,35 @@ export const useStore = create<StoreState>((set, get) => ({
           content.toLowerCase().match(/#[\w\u4e00-\u9fa5]+/g) || []
         );
         const cardTags = new Set(card.tags.map((t) => t.toLowerCase()));
-        const tagOverlap = [...contentTags].filter((t) => cardTags.has(t)).length;
+        const tagOverlap = [...contentTags].filter((t) => cardTags.has(t));
         const tagScore =
-          tagOverlap / Math.max(contentTags.size + cardTags.size, 1);
+          tagOverlap.length / Math.max(contentTags.size + cardTags.size, 1);
 
-        const totalScore = similarity * 0.7 + tagScore * 0.3;
+        const commonKeywords = extractCommonKeywords(
+          contentTokens,
+          cardTokens,
+          3
+        );
 
-        let reason = `内容相似度: ${(similarity * 100).toFixed(0)}%`;
-        if (tagOverlap > 0) {
-          reason += `, 标签重叠: ${tagOverlap}个`;
+        const totalScore = similarity * 0.6 + tagScore * 0.4;
+
+        const reasons: string[] = [];
+        if (commonKeywords.length > 0) {
+          reasons.push(`共同关键词：${commonKeywords.join('、')}`);
         }
+        if (tagOverlap.length > 0) {
+          reasons.push(`共同标签：${tagOverlap.join('、')}`);
+        }
+        reasons.push(`内容相似度 ${(similarity * 100).toFixed(0)}%`);
 
         return {
           cardId: card.id,
           cardTitle: card.title,
           similarity: totalScore,
-          reason,
+          reason: reasons.join(' | '),
         };
       })
-      .filter((s) => s.similarity > 0.05)
+      .filter((s) => s.similarity > 0.03)
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, 5);
 

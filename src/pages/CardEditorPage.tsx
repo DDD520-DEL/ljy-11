@@ -44,6 +44,7 @@ export default function CardEditorPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [suggestions, setSuggestions] = useState<LinkSuggestion[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [justLinkedId, setJustLinkedId] = useState<string | null>(null);
 
   const existingCard = !isNew ? cards.find((c) => c.id === id) : null;
   const cardLinks = existingCard ? getCardLinks(existingCard.id) : { outgoing: [], incoming: [] };
@@ -80,10 +81,11 @@ export default function CardEditorPage() {
   }, [id, card, startReading, endReading, isNew]);
 
   const handleSuggestLinks = useCallback(async () => {
-    if (!content) return;
-    const result = await suggestLinks(content);
+    if (!content && !title) return;
+    const combinedContent = title ? `${title}\n${content}` : content;
+    const result = await suggestLinks(combinedContent, id && !isNew ? id : undefined);
     setSuggestions(result);
-  }, [content, suggestLinks]);
+  }, [content, title, suggestLinks, id, isNew]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -149,8 +151,12 @@ export default function CardEditorPage() {
       alert('请先保存卡片后再添加关联');
       return;
     }
+    setJustLinkedId(targetCardId);
     await createLink(id, targetCardId);
-    setSuggestions(suggestions.filter((s) => s.cardId !== targetCardId));
+    setTimeout(() => {
+      setJustLinkedId(null);
+      setSuggestions((prev) => prev.filter((s) => s.cardId !== targetCardId));
+    }, 600);
   };
 
   const container = {
@@ -366,37 +372,67 @@ export default function CardEditorPage() {
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-amber-gold" />
-              关联建议
+              可能相关的卡片
             </h3>
             {suggestions.length > 0 ? (
               <div className="space-y-3">
                 {suggestions.map((suggestion) => (
                   <div
                     key={suggestion.cardId}
-                    className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-amber-gold/30 transition-colors"
+                    className={`p-4 rounded-xl border transition-all duration-300 ${
+                      justLinkedId === suggestion.cardId
+                        ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border-emerald-400/50 shadow-lg shadow-emerald-500/20 scale-[1.02]'
+                        : 'bg-gradient-to-br from-white/5 to-white/[0.02] border-white/10 hover:border-amber-gold/40 hover:shadow-lg hover:shadow-amber-gold/5'
+                    }`}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-white">
+                    <div className="flex items-start justify-between mb-3">
+                      <button
+                        onClick={() => navigate(`/cards/${suggestion.cardId}`)}
+                        className="text-sm font-semibold text-white hover:text-amber-gold transition-colors text-left"
+                      >
                         {suggestion.cardTitle}
-                      </span>
-                      <span className="text-xs text-amber-gold">
+                      </button>
+                      <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-amber-gold/15 text-amber-gold">
                         {(suggestion.similarity * 100).toFixed(0)}%
                       </span>
                     </div>
-                    <p className="text-xs text-white/50 mb-2">{suggestion.reason}</p>
+                    <div className="text-xs text-white/60 mb-3 leading-relaxed">
+                      {suggestion.reason.split(' | ').map((r, i) => (
+                        <div key={i} className="flex items-start gap-1.5 mb-1 last:mb-0">
+                          <span className="text-amber-gold/70 mt-0.5">•</span>
+                          <span>{r}</span>
+                        </div>
+                      ))}
+                    </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleInsertLink(suggestion.cardTitle)}
-                        className="flex-1 px-2 py-1.5 text-xs bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
+                        className="flex-1 px-3 py-2 text-xs font-medium bg-white/10 text-white rounded-lg hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                        title="在正文中插入 [[卡片标题]] 引用"
                       >
                         插入引用
                       </button>
-                      {!isNew && (
+                      {!isNew ? (
+                        justLinkedId === suggestion.cardId ? (
+                          <div className="flex-1 px-3 py-2 text-xs font-medium bg-gradient-to-r from-emerald-500/25 to-emerald-500/15 text-emerald-400 rounded-lg flex items-center justify-center gap-1">
+                            ✅ 关联成功
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleCreateLink(suggestion.cardId)}
+                            className="flex-1 px-3 py-2 text-xs font-medium bg-gradient-to-r from-amber-gold/25 to-amber-gold/15 text-amber-gold rounded-lg hover:from-amber-gold/35 hover:to-amber-gold/25 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-sm shadow-amber-gold/10"
+                            title="一键创建双向链接"
+                          >
+                            🔗 建立关联
+                          </button>
+                        )
+                      ) : (
                         <button
-                          onClick={() => handleCreateLink(suggestion.cardId)}
-                          className="flex-1 px-2 py-1.5 text-xs bg-amber-gold/20 text-amber-gold rounded-lg hover:bg-amber-gold/30 transition-colors"
+                          disabled
+                          className="flex-1 px-3 py-2 text-xs font-medium bg-white/5 text-white/30 rounded-lg cursor-not-allowed"
+                          title="请先保存卡片后再建立关联"
                         >
-                          建立关联
+                          保存后关联
                         </button>
                       )}
                     </div>
@@ -404,9 +440,17 @@ export default function CardEditorPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-white/40 text-center py-8">
-                输入内容后将自动建议关联卡片
-              </p>
+              <div className="text-center py-10">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
+                  <Sparkles className="w-8 h-8 text-white/20" />
+                </div>
+                <p className="text-sm text-white/40 mb-1">
+                  正在分析内容...
+                </p>
+                <p className="text-xs text-white/30">
+                  输入标题和正文后将自动推荐相关卡片
+                </p>
+              </div>
             )}
           </div>
 

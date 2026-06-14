@@ -1,5 +1,53 @@
 import { Card, Link, ReviewHistory, ReadingRecord, Achievement, AchievementType, LearningDay, StreakInfo } from '../types';
 
+const STOPWORDS = new Set([
+  '的', '了', '和', '是', '在', '我', '有', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去',
+  '你', '会', '着', '没有', '看', '好', '自己', '这', '那', '他', '她', '它', '们', '这个', '那个', '什么', '怎么',
+  '为什么', '可以', '可能', '应该', '如果', '因为', '所以', '但是', '然而', '虽然', '而且', '并且', '或者',
+  'the', 'a', 'an', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had',
+  'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'shall',
+  'i', 'me', 'my', 'we', 'our', 'you', 'your', 'he', 'him', 'his', 'she', 'her', 'it', 'its', 'they', 'them', 'their',
+  'this', 'that', 'these', 'those', 'what', 'which', 'who', 'whom', 'when', 'where', 'why', 'how',
+  'not', 'no', 'nor', 'so', 'yet', 'both', 'either', 'neither', 'each', 'every', 'all', 'any', 'few', 'more', 'most',
+  'other', 'some', 'such', 'than', 'too', 'very', 'just', 'also', 'now', 'then', 'here', 'there',
+  'with', 'without', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after',
+  'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further'
+]);
+
+export function tokenizeWithFilter(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\u4e00-\u9fa5\s]/g, ' ')
+    .split(/\s+/)
+    .filter((word) => word.length > 1 && !STOPWORDS.has(word));
+}
+
+export function extractCommonKeywords(
+  text1Tokens: string[],
+  text2Tokens: string[],
+  topN: number = 5
+): string[] {
+  const freq1 = new Map<string, number>();
+  const freq2 = new Map<string, number>();
+
+  text1Tokens.forEach((t) => freq1.set(t, (freq1.get(t) || 0) + 1));
+  text2Tokens.forEach((t) => freq2.set(t, (freq2.get(t) || 0) + 1));
+
+  const commonKeywords: { word: string; score: number }[] = [];
+  freq1.forEach((count1, word) => {
+    const count2 = freq2.get(word);
+    if (count2) {
+      const score = Math.min(count1, count2);
+      commonKeywords.push({ word, score });
+    }
+  });
+
+  return commonKeywords
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topN)
+    .map((k) => k.word);
+}
+
 export function calculateNextReview(card: Card, rating: number): Partial<Card> {
   let { easeFactor, reviewInterval, reviewCount } = card;
 

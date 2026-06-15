@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -17,100 +17,8 @@ import {
 import { useStore } from '../store/useStore';
 import { CardTemplate } from '../types';
 import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
-
-const PRESET_ICONS = [
-  { icon: '📖', label: '读书' },
-  { icon: '📝', label: '会议' },
-  { icon: '🎓', label: '学习' },
-  { icon: '💡', label: '灵感' },
-  { icon: '📋', label: '清单' },
-  { icon: '🔬', label: '研究' },
-  { icon: '💼', label: '工作' },
-  { icon: '🎯', label: '目标' },
-  { icon: '📊', label: '数据' },
-  { icon: '🧠', label: '思维' },
-];
-
-const PRESET_TEMPLATES: Partial<CardTemplate>[] = [
-  {
-    name: '读书笔记',
-    description: '记录书籍阅读的核心观点和个人感悟',
-    titleFormat: '《书名》读书笔记',
-    contentSkeleton: `## 基本信息
-- 书名：
-- 作者：
-- 阅读日期：
-
-## 核心观点
-1. 
-2. 
-3. 
-
-## 精彩摘录
-> 
-
-## 个人感悟
-
-
-## 行动清单
-- [ ] `,
-    defaultTags: ['读书笔记', '阅读'],
-    icon: '📖',
-  },
-  {
-    name: '会议纪要',
-    description: '记录会议讨论内容和决策事项',
-    titleFormat: '会议纪要 - 主题',
-    contentSkeleton: `## 会议信息
-- 日期：
-- 参会人：
-- 主题：
-
-## 讨论要点
-1. 
-2. 
-3. 
-
-## 决议事项
-- [ ] 
-- [ ] 
-
-## 待跟进
-- 负责人：
-- 截止日期：
-
-## 下次会议
-- 时间：
-- 议题：`,
-    defaultTags: ['会议纪要', '工作'],
-    icon: '📝',
-  },
-  {
-    name: '学习摘要',
-    description: '整理学习内容的关键知识点',
-    titleFormat: '学习摘要 - 主题',
-    contentSkeleton: `## 学习主题
-
-
-## 关键概念
-1. 
-2. 
-3. 
-
-## 知识要点
-### 
-### 
-
-## 疑问与思考
-- 
-
-## 参考资料
-- `,
-    defaultTags: ['学习', '笔记'],
-    icon: '🎓',
-  },
-];
+import { zhCN, enUS } from 'date-fns/locale';
+import { useI18n } from '../i18n';
 
 interface TemplateFormData {
   name: string;
@@ -131,12 +39,102 @@ const emptyForm: TemplateFormData = {
 };
 
 export default function TemplatePage() {
+  const { language, t } = useI18n();
   const { cardTemplates, createTemplate, updateTemplate, deleteTemplate } = useStore();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<TemplateFormData>(emptyForm);
   const [tagInput, setTagInput] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+
+  const dateLocale = language === 'zh-CN' ? zhCN : enUS;
+
+  const PRESET_ICONS = useMemo(() => {
+    const iconList = ['📖', '📝', '🎓', '💡', '📋', '🔬', '💼', '🎯', '📊', '🧠'];
+    const labels = t('template.presetIcons').split('、');
+    return iconList.map((icon, i) => ({ icon, label: labels[i] || icon }));
+  }, [t]);
+
+  const PRESET_TEMPLATES = useMemo<Partial<CardTemplate>[]>(() => [
+    {
+      name: t('template.preset1Name'),
+      description: t('template.preset1Desc'),
+      titleFormat: t('template.preset1TitleFormat'),
+      contentSkeleton: `## 基本信息
+- 书名：
+- 作者：
+- 阅读日期：
+
+## 核心观点
+1. 
+2. 
+3. 
+
+## 精彩摘录
+> 
+
+## 个人感悟
+
+
+
+## 行动清单
+- [ ] `,
+      defaultTags: ['读书笔记', '阅读'],
+      icon: '📖',
+    },
+    {
+      name: t('template.preset2Name'),
+      description: t('template.preset2Desc'),
+      titleFormat: t('template.preset2TitleFormat'),
+      contentSkeleton: `## 会议信息
+- 日期：
+- 参会人：
+- 主题：
+
+## 讨论要点
+1. 
+2. 
+3. 
+
+## 决议事项
+- [ ] 
+- [ ] 
+
+## 待跟进
+- 负责人：
+- 截止日期：
+
+## 下次会议
+- 时间：
+- 议题：`,
+      defaultTags: ['会议纪要', '工作'],
+      icon: '📝',
+    },
+    {
+      name: t('template.preset3Name'),
+      description: t('template.preset3Desc'),
+      titleFormat: t('template.preset3TitleFormat'),
+      contentSkeleton: `## 学习主题
+
+
+## 关键概念
+1. 
+2. 
+3. 
+
+## 知识要点
+### 
+### 
+
+## 疑问与思考
+- 
+
+## 参考资料
+- `,
+      defaultTags: ['学习', '笔记'],
+      icon: '🎓',
+    },
+  ], [t]);
 
   const handleOpenCreate = () => {
     setFormData(emptyForm);
@@ -229,10 +227,10 @@ export default function TemplatePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-4xl font-bold text-white mb-2">
-            卡片模板
+            {t('template.title')}
           </h1>
           <p className="text-white/60">
-            创建可复用的卡片模板，快速生成结构化内容
+            {t('template.subtitle')}
           </p>
         </div>
         <button
@@ -240,17 +238,17 @@ export default function TemplatePage() {
           className="btn-primary flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
-          新建模板
+          {t('template.newTemplate')}
         </button>
       </div>
 
       {availablePresets.length > 0 && (
         <div className="glass-card p-6">
           <h2 className="font-display text-lg font-bold text-white mb-4">
-            推荐模板
+            {t('template.recommendedTitle')}
           </h2>
           <p className="text-sm text-white/60 mb-4">
-            快速添加预设模板，也可以自定义修改
+            {t('template.recommendedDesc')}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {availablePresets.map((preset) => (
@@ -281,7 +279,7 @@ export default function TemplatePage() {
                 </div>
                 <div className="mt-3 flex items-center gap-1 text-amber-gold text-sm">
                   <Plus className="w-4 h-4" />
-                  <span>点击添加</span>
+                  <span>{t('template.clickToAdd')}</span>
                 </div>
               </motion.button>
             ))}
@@ -313,7 +311,7 @@ export default function TemplatePage() {
                         {template.name}
                       </h3>
                       <p className="text-xs text-white/50">
-                        {template.description || '暂无描述'}
+                        {template.description || t('template.noDescription')}
                       </p>
                     </div>
                   </div>
@@ -321,14 +319,14 @@ export default function TemplatePage() {
                     <button
                       onClick={() => handleOpenEdit(template)}
                       className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-                      title="编辑模板"
+                      title={t('template.editTitle')}
                     >
                       <Pencil className="w-4 h-4 text-white/60 hover:text-amber-gold" />
                     </button>
                     <button
                       onClick={() => setShowDeleteConfirm(template.id)}
                       className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-                      title="删除模板"
+                      title={t('template.deleteModalTitle')}
                     >
                       <Trash2 className="w-4 h-4 text-white/60 hover:text-rose-review" />
                     </button>
@@ -337,7 +335,7 @@ export default function TemplatePage() {
 
                 {template.titleFormat && (
                   <div className="mb-3 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
-                    <span className="text-xs text-white/40">标题格式：</span>
+                    <span className="text-xs text-white/40">{t('template.titleFormat')}</span>
                     <span className="text-sm text-amber-gold">
                       {template.titleFormat}
                     </span>
@@ -346,7 +344,7 @@ export default function TemplatePage() {
 
                 {template.contentSkeleton && (
                   <div className="mb-3 px-3 py-2 rounded-lg bg-white/5 border border-white/10 max-h-32 overflow-hidden">
-                    <span className="text-xs text-white/40 block mb-1">正文骨架：</span>
+                    <span className="text-xs text-white/40 block mb-1">{t('template.bodyOutline')}</span>
                     <pre className="text-xs text-white/60 whitespace-pre-wrap font-mono leading-relaxed line-clamp-4">
                       {template.contentSkeleton}
                     </pre>
@@ -364,7 +362,7 @@ export default function TemplatePage() {
                 )}
 
                 <div className="text-xs text-white/30 pt-2 border-t border-white/10">
-                  更新于 {formatDistanceToNow(template.updatedAt, { addSuffix: true, locale: zhCN })}
+                  {t('template.updatedAtPrefix')} {formatDistanceToNow(template.updatedAt, { addSuffix: true, locale: dateLocale })}
                 </div>
               </motion.div>
             );
@@ -382,17 +380,17 @@ export default function TemplatePage() {
             <FileText className="w-10 h-10 text-white/20" />
           </div>
           <h3 className="font-display text-xl font-bold text-white mb-2">
-            还没有模板
+            {t('template.emptyTitle')}
           </h3>
           <p className="text-white/50 mb-6">
-            创建模板来快速生成结构化的知识卡片
+            {t('template.emptyDesc')}
           </p>
           <button
             onClick={handleOpenCreate}
             className="btn-primary inline-flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
-            创建第一个模板
+            {t('template.createFirstTemplate')}
           </button>
         </motion.div>
       )}
@@ -418,7 +416,7 @@ export default function TemplatePage() {
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="font-display text-2xl font-bold text-white">
-                  {editingId ? '编辑模板' : '创建模板'}
+                  {editingId ? t('template.editTitle') : t('template.createTitle')}
                 </h3>
                 <button
                   onClick={() => {
@@ -433,7 +431,7 @@ export default function TemplatePage() {
 
               <div className="space-y-5">
                 <div>
-                  <label className="block text-sm text-white/70 mb-2">图标</label>
+                  <label className="block text-sm text-white/70 mb-2">{t('template.iconLabel')}</label>
                   <div className="flex flex-wrap gap-2">
                     {PRESET_ICONS.map(({ icon, label }) => (
                       <button
@@ -453,72 +451,62 @@ export default function TemplatePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-white/70 mb-2">模板名称 *</label>
+                  <label className="block text-sm text-white/70 mb-2">{t('template.nameLabel')}</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="例如：读书笔记、会议纪要"
+                    placeholder={t('template.namePlaceholder')}
                     className="input-field"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-white/70 mb-2">描述</label>
+                  <label className="block text-sm text-white/70 mb-2">{t('template.descLabel')}</label>
                   <input
                     type="text"
                     value={formData.description}
                     onChange={(e) =>
                       setFormData({ ...formData, description: e.target.value })
                     }
-                    placeholder="简短描述模板用途"
+                    placeholder={t('template.descPlaceholder')}
                     className="input-field"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-white/70 mb-2">标题格式</label>
+                  <label className="block text-sm text-white/70 mb-2">{t('template.titleFormatLabel')}</label>
                   <input
                     type="text"
                     value={formData.titleFormat}
                     onChange={(e) =>
                       setFormData({ ...formData, titleFormat: e.target.value })
                     }
-                    placeholder="例如：《书名》读书笔记"
+                    placeholder={t('template.titleFormatPlaceholder')}
                     className="input-field"
                   />
                   <p className="text-xs text-white/40 mt-1">
-                    新建卡片时会自动填入标题，用户可修改
+                    {t('template.titleFormatTip')}
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm text-white/70 mb-2">正文骨架</label>
+                  <label className="block text-sm text-white/70 mb-2">{t('template.bodyOutlineLabel')}</label>
                   <textarea
                     value={formData.contentSkeleton}
                     onChange={(e) =>
                       setFormData({ ...formData, contentSkeleton: e.target.value })
                     }
-                    placeholder={`输入正文模板，例如：
-
-## 基本信息
-- 日期：
-- 主题：
-
-## 核心内容
-1. 
-2. 
-
-## 总结`}
+                    placeholder={t('template.bodyOutlinePlaceholder')}
                     className="w-full h-64 p-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-amber-gold/50 focus:ring-2 focus:ring-amber-gold/20 transition-all duration-300 font-mono text-sm resize-none"
                   />
                   <p className="text-xs text-white/40 mt-1">
-                    支持 Markdown 语法，新建卡片时会自动填入正文
+                    {t('template.bodyOutlineTip')}
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm text-white/70 mb-2">默认标签</label>
+                  <label className="block text-sm text-white/70 mb-2">{t('template.defaultTagsLabel')}</label>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {formData.defaultTags.map((tag) => (
                       <span key={tag} className="tag-chip group">
@@ -543,7 +531,7 @@ export default function TemplatePage() {
                           handleAddTag();
                         }
                       }}
-                      placeholder="输入标签后按回车添加"
+                      placeholder={t('template.addTagPlaceholder')}
                       className="input-field flex-1"
                     />
                     <button
@@ -551,7 +539,7 @@ export default function TemplatePage() {
                       disabled={!tagInput.trim()}
                       className="btn-secondary disabled:opacity-50"
                     >
-                      添加
+                      {t('template.addButton')}
                     </button>
                   </div>
                 </div>
@@ -565,14 +553,14 @@ export default function TemplatePage() {
                   }}
                   className="flex-1 btn-secondary"
                 >
-                  取消
+                  {t('template.cancelButton')}
                 </button>
                 <button
                   onClick={handleSubmit}
                   disabled={!formData.name.trim()}
                   className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {editingId ? '保存修改' : '创建模板'}
+                  {editingId ? t('template.saveButton') : t('template.createButton')}
                 </button>
               </div>
             </motion.div>
@@ -602,28 +590,28 @@ export default function TemplatePage() {
                 </div>
                 <div>
                   <h3 className="font-display text-xl font-bold text-white">
-                    确认删除
+                    {t('template.deleteModalTitle')}
                   </h3>
                   <p className="text-sm text-white/60">
-                    此操作不可撤销
+                    {t('template.deleteModalDesc1')}
                   </p>
                 </div>
               </div>
               <p className="text-white/70 mb-6">
-                确定要删除这个模板吗？已使用该模板创建的卡片不受影响。
+                {t('template.deleteModalDesc2')}
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowDeleteConfirm(null)}
                   className="flex-1 btn-secondary"
                 >
-                  取消
+                  {t('template.deleteCancel')}
                 </button>
                 <button
                   onClick={() => handleDelete(showDeleteConfirm)}
                   className="flex-1 bg-rose-review text-white font-medium rounded-xl px-6 py-2.5 hover:bg-rose-review/80 transition-colors"
                 >
-                  确认删除
+                  {t('template.deleteConfirm')}
                 </button>
               </div>
             </motion.div>

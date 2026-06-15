@@ -13,12 +13,16 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { zhCN, enUS } from 'date-fns/locale';
+import { useI18n } from '../i18n';
 
 export default function FavoritesPage() {
   const navigate = useNavigate();
+  const { language, t } = useI18n();
   const { cards, links, getFavoriteCards, toggleFavorite, searchQuery, setSearchQuery, selectedTags, setSelectedTags } = useStore();
   const [sortBy, setSortBy] = useState<'updated' | 'created' | 'links'>('updated');
+
+  const dateLocale = language === 'zh-CN' ? zhCN : enUS;
 
   const favoriteCards = useMemo(() => getFavoriteCards(), [cards]);
 
@@ -97,10 +101,10 @@ export default function FavoritesPage() {
         <div>
           <h1 className="font-display text-4xl font-bold text-white mb-2 flex items-center gap-3">
             <Star className="w-10 h-10 text-amber-gold fill-amber-gold" />
-            我的收藏
+            {t('favorites.title')}
           </h1>
           <p className="text-white/60">
-            共收藏 {favoriteCards.length} 张卡片，{filteredCards.length} 个结果
+            {t('favorites.subtitlePrefix')} {favoriteCards.length} {t('favorites.subtitleMid')}{filteredCards.length} {t('favorites.subtitleSuffix')}
           </p>
         </div>
       </div>
@@ -111,7 +115,7 @@ export default function FavoritesPage() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
             <input
               type="text"
-              placeholder="搜索收藏的卡片..."
+              placeholder={t('favorites.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="input-field pl-12"
@@ -122,9 +126,9 @@ export default function FavoritesPage() {
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
             className="input-field w-auto"
           >
-            <option value="updated">最近更新</option>
-            <option value="created">创建时间</option>
-            <option value="links">关联数量</option>
+            <option value="updated">{t('favorites.sortRecent')}</option>
+            <option value="created">{t('favorites.sortCreated')}</option>
+            <option value="links">{t('favorites.sortLinks')}</option>
           </select>
           {selectedTags.length > 0 && (
             <button
@@ -132,7 +136,7 @@ export default function FavoritesPage() {
               className="btn-secondary flex items-center gap-2"
             >
               <X className="w-4 h-4" />
-              清除筛选
+              {t('favorites.clearFilter')}
             </button>
           )}
         </div>
@@ -169,17 +173,17 @@ export default function FavoritesPage() {
             <StarOff className="w-10 h-10 text-white/20" />
           </div>
           <h3 className="font-display text-xl font-bold text-white mb-2">
-            还没有收藏的卡片
+            {t('favorites.empty1Title')}
           </h3>
           <p className="text-white/50 mb-6">
-            在浏览卡片时点击星标图标，将重要或常用的卡片添加到收藏夹
+            {t('favorites.empty1Desc')}
           </p>
           <button
             onClick={() => navigate('/cards')}
             className="btn-primary inline-flex items-center gap-2"
           >
             <FileText className="w-5 h-5" />
-            浏览所有卡片
+            {t('favorites.browseAll')}
           </button>
         </motion.div>
       ) : filteredCards.length === 0 ? (
@@ -192,10 +196,10 @@ export default function FavoritesPage() {
             <Search className="w-10 h-10 text-white/20" />
           </div>
           <h3 className="font-display text-xl font-bold text-white mb-2">
-            没有找到匹配的收藏卡片
+            {t('favorites.empty2Title')}
           </h3>
           <p className="text-white/50">
-            尝试调整搜索条件或清除筛选
+            {t('favorites.empty2Desc')}
           </p>
         </motion.div>
       ) : (
@@ -223,7 +227,7 @@ export default function FavoritesPage() {
                   <button
                     onClick={(e) => handleToggleFavorite(card.id, e)}
                     className="absolute top-4 right-4 z-10 p-1.5 rounded-lg hover:bg-white/10 transition-colors"
-                    title="取消收藏"
+                    title={t('cards.removeFavorite')}
                   >
                     <Star className="w-5 h-5 text-amber-gold fill-amber-gold group-hover:scale-110 transition-transform" />
                   </button>
@@ -261,14 +265,14 @@ export default function FavoritesPage() {
                     <span className="text-xs text-white/40">
                       {formatDistanceToNow(card.updatedAt, {
                         addSuffix: true,
-                        locale: zhCN,
+                        locale: dateLocale,
                       })}
                     </span>
                   </div>
 
                   <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
                     <span className="text-xs text-white/40">
-                      复习间隔: {card.reviewInterval} 天
+                      {t('favorites.reviewIntervalPrefix')}{card.reviewInterval} {t('favorites.reviewIntervalSuffix')}
                     </span>
                     <ArrowRight className="w-4 h-4 text-white/40 group-hover:text-amber-gold group-hover:translate-x-1 transition-all" />
                   </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, FileText, Tag, Hash } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useI18n } from '../i18n';
 
 interface SearchResult {
   id: string;
@@ -129,6 +130,7 @@ interface SearchOverlayProps {
 export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
   const navigate = useNavigate();
   const { cards } = useStore();
+  const { language, t } = useI18n();
   const [query, setQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -270,7 +272,7 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="搜索卡片... 多关键词用空格分隔"
+                placeholder={t('search.placeholder')}
                 className="flex-1 bg-transparent text-white placeholder-white/40 outline-none text-base"
               />
               <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 rounded bg-white/10 text-white/40 text-xs border border-white/10">
@@ -308,7 +310,7 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                       onClick={() => setSelectedTags([])}
                       className="text-xs text-white/40 hover:text-white/70 shrink-0"
                     >
-                      清除
+                      {t('search.clear')}
                     </button>
                   )}
                 </div>
@@ -319,9 +321,9 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
               {searchResults.length === 0 && (keywords.length > 0 || selectedTags.length > 0) && (
                 <div className="px-5 py-12 text-center">
                   <Search className="w-10 h-10 text-white/10 mx-auto mb-3" />
-                  <p className="text-white/40 text-sm">未找到匹配的卡片</p>
+                  <p className="text-white/40 text-sm">{t('search.noResults')}</p>
                   <p className="text-white/25 text-xs mt-1">
-                    尝试不同的关键词或调整标签筛选
+                    {t('search.noResultsHint')}
                   </p>
                 </div>
               )}
@@ -329,9 +331,9 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
               {searchResults.length === 0 && keywords.length === 0 && selectedTags.length === 0 && (
                 <div className="px-5 py-12 text-center">
                   <FileText className="w-10 h-10 text-white/10 mx-auto mb-3" />
-                  <p className="text-white/40 text-sm">输入关键词开始搜索</p>
+                  <p className="text-white/40 text-sm">{t('search.startTyping')}</p>
                   <p className="text-white/25 text-xs mt-1">
-                    支持多关键词组合搜索，空格分隔
+                    {t('search.startTypingHint')}
                   </p>
                 </div>
               )}
@@ -388,19 +390,19 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
             <div className="px-5 py-2.5 border-t border-white/10 flex items-center gap-4 text-xs text-white/30">
               <span className="flex items-center gap-1">
                 <kbd className="px-1.5 py-0.5 rounded bg-white/10 border border-white/10">↑↓</kbd>
-                导航
+                {t('search.navigation')}
               </span>
               <span className="flex items-center gap-1">
                 <kbd className="px-1.5 py-0.5 rounded bg-white/10 border border-white/10">Enter</kbd>
-                打开
+                {t('search.open')}
               </span>
               <span className="flex items-center gap-1">
                 <kbd className="px-1.5 py-0.5 rounded bg-white/10 border border-white/10">Esc</kbd>
-                关闭
+                {t('search.close')}
               </span>
               {searchResults.length > 0 && (
                 <span className="ml-auto">
-                  {searchResults.length} 个结果
+                  {searchResults.length} {t('search.resultCountSuffix')}
                 </span>
               )}
             </div>

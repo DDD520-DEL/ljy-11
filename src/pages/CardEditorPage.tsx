@@ -16,7 +16,10 @@ import {
   Calendar,
   Flag,
 } from 'lucide-react';
+import { format } from 'date-fns';
+import { zhCN, enUS } from 'date-fns/locale';
 import { useStore } from '../store/useStore';
+import { useI18n } from '../i18n';
 import { MarkdownViewer } from '../components/MarkdownViewer';
 import CardVersionHistory from '../components/CardVersionHistory';
 import CardRelationPanel from '../components/CardRelationPanel';
@@ -29,6 +32,8 @@ export default function CardEditorPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isNew = id === 'new';
+  const { language, t } = useI18n();
+  const dateLocale = language === 'zh-CN' ? zhCN : enUS;
 
   const {
     cards,
@@ -122,7 +127,7 @@ export default function CardEditorPage() {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      alert('请输入卡片标题');
+      alert(t('editor.titleRequired'));
       return;
     }
 
@@ -155,7 +160,7 @@ export default function CardEditorPage() {
 
   const handleDelete = async () => {
     if (!id) return;
-    if (confirm('确定要删除这张卡片吗？此操作不可撤销。')) {
+    if (confirm(t('editor.deleteConfirm'))) {
       await deleteCard(id);
       navigate('/cards');
     }
@@ -229,7 +234,7 @@ export default function CardEditorPage() {
 
   const handleCreateLink = async (targetCardId: string) => {
     if (!id || isNew) {
-      alert('请先保存卡片后再添加关联');
+      alert(t('editor.saveFirstHint'));
       return;
     }
     setJustLinkedId(targetCardId);
@@ -273,10 +278,10 @@ export default function CardEditorPage() {
           </button>
           <div>
             <h1 className="font-display text-3xl font-bold text-white">
-              {isNew ? '创建新卡片' : '编辑卡片'}
+              {isNew ? t('editor.createTitle') : t('editor.editTitle')}
             </h1>
             <p className="text-white/60 text-sm">
-              使用 [[卡片标题]] 语法创建双向链接
+              {t('editor.bidirectionalHint')}
             </p>
           </div>
         </div>
@@ -287,7 +292,7 @@ export default function CardEditorPage() {
               className="btn-secondary flex items-center gap-2"
             >
               <LayoutTemplate className="w-4 h-4" />
-              使用模板
+              {t('editor.useTemplate')}
             </button>
           )}
           {!isNew && card && (
@@ -298,18 +303,18 @@ export default function CardEditorPage() {
                   ? 'bg-amber-gold/20 border-amber-gold/50 text-amber-gold'
                   : ''
               }`}
-              title={card.isFavorite ? '取消收藏' : '添加收藏'}
+              title={card.isFavorite ? t('editor.removeFavoriteTitle') : t('editor.addFavoriteTitle')}
             >
               <Star
                 className={`w-4 h-4 ${card.isFavorite ? 'fill-amber-gold' : ''}`}
               />
-              {card.isFavorite ? '已收藏' : '收藏'}
+              {card.isFavorite ? t('editor.favorited') : t('editor.favorite')}
             </button>
           )}
           {!isNew && (
             <button onClick={handleDelete} className="btn-danger flex items-center gap-2">
               <Trash2 className="w-4 h-4" />
-              删除
+              {t('editor.deleteButton')}
             </button>
           )}
           <button
@@ -318,7 +323,7 @@ export default function CardEditorPage() {
             className="btn-primary flex items-center gap-2 disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
-            {isSaving ? '保存中...' : '保存'}
+            {isSaving ? t('editor.saving') : t('editor.saveButton')}
           </button>
         </div>
       </motion.div>
@@ -328,7 +333,7 @@ export default function CardEditorPage() {
           <div className="glass-card p-6 space-y-4">
             <input
               type="text"
-              placeholder="卡片标题..."
+              placeholder={t('editor.titlePlaceholder')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full bg-transparent border-none outline-none font-display text-3xl font-bold text-white placeholder-white/30"
@@ -341,7 +346,7 @@ export default function CardEditorPage() {
                 onChange={(e) => setSelectedSpaceId(e.target.value || null)}
                 className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/70 outline-none hover:border-white/20 transition-colors cursor-pointer"
               >
-                <option value="">未分配空间</option>
+                <option value="">{t('editor.noSpace')}</option>
                 {knowledgeSpaces.map((space) => (
                   <option key={space.id} value={space.id}>
                     {space.icon} {space.name}
@@ -376,7 +381,7 @@ export default function CardEditorPage() {
               <form onSubmit={handleAddTag} className="flex items-center">
                 <input
                   type="text"
-                  placeholder="添加标签..."
+                  placeholder={t('editor.addTagPlaceholder')}
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   className="w-32 bg-transparent border-none outline-none text-sm text-white placeholder-white/30"
@@ -400,7 +405,7 @@ export default function CardEditorPage() {
                 className="flex items-center gap-2 px-3 py-1.5 text-xs bg-amber-gold/10 text-amber-gold rounded-lg hover:bg-amber-gold/20 transition-colors"
               >
                 <Sparkles className="w-3 h-3" />
-                智能建议
+                {t('editor.smartSuggest')}
               </button>
             </div>
             {viewMode === 'edit' ? (
@@ -409,16 +414,12 @@ export default function CardEditorPage() {
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="开始编写内容...
-
-使用 [[卡片标题]] 创建双向链接
-支持 Markdown 语法
-快捷键: Ctrl+B 加粗, Ctrl+I 斜体"
+                placeholder={t('editor.editModePlaceholder')}
                 className="w-full h-96 p-6 bg-transparent border-none outline-none resize-none font-mono text-sm text-white placeholder-white/30"
               />
             ) : viewMode === 'preview' ? (
               <div className="p-6 h-96 overflow-y-auto">
-                <MarkdownViewer content={content || '*暂无内容*'} />
+                <MarkdownViewer content={content || t('editor.previewNoContent')} />
               </div>
             ) : (
               <div className="flex h-96">
@@ -427,15 +428,11 @@ export default function CardEditorPage() {
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="开始编写内容...
-
-使用 [[卡片标题]] 创建双向链接
-支持 Markdown 语法
-快捷键: Ctrl+B 加粗, Ctrl+I 斜体"
+                  placeholder={t('editor.editModePlaceholder')}
                   className="w-1/2 h-full p-6 bg-transparent border-none outline-none resize-none font-mono text-sm text-white placeholder-white/30 border-r border-white/10"
                 />
                 <div className="w-1/2 p-6 overflow-y-auto">
-                  <MarkdownViewer content={content || '*暂无内容*'} />
+                  <MarkdownViewer content={content || t('editor.previewNoContent')} />
                 </div>
               </div>
             )}
@@ -445,11 +442,11 @@ export default function CardEditorPage() {
             <div className="glass-card p-6">
               <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <Link className="w-5 h-5 text-amber-gold" />
-                双向链接
+                {t('editor.bidirectionalLinks')}
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <h4 className="text-sm text-white/60 mb-2">正向链接</h4>
+                  <h4 className="text-sm text-white/60 mb-2">{t('editor.forwardLinks')}</h4>
                   {cardLinks.outgoing.length > 0 ? (
                     <div className="space-y-2">
                       {cardLinks.outgoing.map((link) => {
@@ -471,11 +468,11 @@ export default function CardEditorPage() {
                       })}
                     </div>
                   ) : (
-                    <p className="text-sm text-white/40">暂无正向链接</p>
+                    <p className="text-sm text-white/40">{t('editor.noForwardLinks')}</p>
                   )}
                 </div>
                 <div>
-                  <h4 className="text-sm text-white/60 mb-2">反向链接</h4>
+                  <h4 className="text-sm text-white/60 mb-2">{t('editor.backwardLinks')}</h4>
                   {cardLinks.incoming.length > 0 ? (
                     <div className="space-y-2">
                       {cardLinks.incoming.map((link) => {
@@ -497,7 +494,7 @@ export default function CardEditorPage() {
                       })}
                     </div>
                   ) : (
-                    <p className="text-sm text-white/40">暂无反向链接</p>
+                    <p className="text-sm text-white/40">{t('editor.noBackwardLinks')}</p>
                   )}
                 </div>
               </div>
@@ -513,7 +510,7 @@ export default function CardEditorPage() {
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-amber-gold" />
-              可能相关的卡片
+              {t('editor.relatedCards')}
             </h3>
             {suggestions.length > 0 ? (
               <div className="space-y-3">
@@ -549,31 +546,29 @@ export default function CardEditorPage() {
                       <button
                         onClick={() => handleInsertLink(suggestion.cardTitle)}
                         className="flex-1 px-3 py-2 text-xs font-medium bg-white/10 text-white rounded-lg hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-                        title="在正文中插入 [[卡片标题]] 引用"
                       >
-                        插入引用
+                        {t('editor.insertQuote')}
                       </button>
                       {!isNew ? (
                         justLinkedId === suggestion.cardId ? (
                           <div className="flex-1 px-3 py-2 text-xs font-medium bg-gradient-to-r from-emerald-500/25 to-emerald-500/15 text-emerald-400 rounded-lg flex items-center justify-center gap-1">
-                            ✅ 关联成功
+                            {t('editor.linkSuccess')}
                           </div>
                         ) : (
                           <button
                             onClick={() => handleCreateLink(suggestion.cardId)}
                             className="flex-1 px-3 py-2 text-xs font-medium bg-gradient-to-r from-amber-gold/25 to-amber-gold/15 text-amber-gold rounded-lg hover:from-amber-gold/35 hover:to-amber-gold/25 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-sm shadow-amber-gold/10"
-                            title="一键创建双向链接"
                           >
-                            🔗 建立关联
+                            {t('editor.createLink')}
                           </button>
                         )
                       ) : (
                         <button
                           disabled
                           className="flex-1 px-3 py-2 text-xs font-medium bg-white/5 text-white/30 rounded-lg cursor-not-allowed"
-                          title="请先保存卡片后再建立关联"
+                          title={t('editor.saveFirstHint')}
                         >
-                          保存后关联
+                          {t('editor.saveThenLink')}
                         </button>
                       )}
                     </div>
@@ -586,10 +581,10 @@ export default function CardEditorPage() {
                   <Sparkles className="w-8 h-8 text-white/20" />
                 </div>
                 <p className="text-sm text-white/40 mb-1">
-                  正在分析内容...
+                  {t('editor.analyzingContent')}
                 </p>
                 <p className="text-xs text-white/30">
-                  输入标题和正文后将自动推荐相关卡片
+                  {t('editor.enterContentHint')}
                 </p>
               </div>
             )}
@@ -599,17 +594,17 @@ export default function CardEditorPage() {
             <div className="glass-card p-6">
               <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <Flag className="w-5 h-5 text-amber-gold" />
-                复习设置
+                {t('editor.reviewSettings')}
               </h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-white/60 mb-2">复习优先级</label>
+                  <label className="block text-sm text-white/60 mb-2">{t('editor.reviewPriority')}</label>
                   <div className="flex gap-2">
                     {(['high', 'medium', 'low'] as ReviewPriorityLevel[]).map((level) => {
                       const config = {
-                        high: { label: '高', color: 'bg-rose-500/20 border-rose-500/50 text-rose-400', activeColor: 'bg-rose-500/30 border-rose-500 text-rose-300' },
-                        medium: { label: '中', color: 'bg-amber-500/20 border-amber-500/50 text-amber-400', activeColor: 'bg-amber-500/30 border-amber-500 text-amber-300' },
-                        low: { label: '低', color: 'bg-slate-500/20 border-slate-500/50 text-slate-400', activeColor: 'bg-slate-500/30 border-slate-500 text-slate-300' },
+                        high: { label: t('editor.priorityHigh'), color: 'bg-rose-500/20 border-rose-500/50 text-rose-400', activeColor: 'bg-rose-500/30 border-rose-500 text-rose-300' },
+                        medium: { label: t('editor.priorityMedium'), color: 'bg-amber-500/20 border-amber-500/50 text-amber-400', activeColor: 'bg-amber-500/30 border-amber-500 text-amber-300' },
+                        low: { label: t('editor.priorityLow'), color: 'bg-slate-500/20 border-slate-500/50 text-slate-400', activeColor: 'bg-slate-500/30 border-slate-500 text-slate-300' },
                       }[level];
                       const isActive = reviewPriority === level;
                       return (
@@ -626,14 +621,14 @@ export default function CardEditorPage() {
                     })}
                   </div>
                   <p className="text-xs text-white/40 mt-1.5">
-                    高优先级卡片在复习队列中排在前面
+                    {t('editor.priorityTip')}
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-sm text-white/60 mb-2 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" />
-                    自定义下次复习日期
+                    {t('editor.customReviewDate')}
                   </label>
                   <input
                     type="date"
@@ -647,41 +642,41 @@ export default function CardEditorPage() {
                       onClick={() => setCustomNextReviewDate('')}
                       className="text-xs text-white/40 hover:text-white/60 mt-1 transition-colors"
                     >
-                      清除自定义日期，恢复系统排期
+                      {t('editor.clearCustomDate')}
                     </button>
                   )}
                   <p className="text-xs text-white/40 mt-1.5">
-                    设置后，卡片将在指定日期出现在复习队列中
+                    {t('editor.customDateTip')}
                   </p>
                 </div>
 
                 <div className="pt-2 border-t border-white/10">
-                  <h4 className="text-sm text-white/60 mb-2">复习统计</h4>
+                  <h4 className="text-sm text-white/60 mb-2">{t('editor.reviewStats')}</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-white/50">复习次数</span>
+                      <span className="text-white/50">{t('editor.reviewCount')}</span>
                       <span className="text-white font-medium">
-                        {existingCard.reviewCount} 次
+                        {existingCard.reviewCount}{t('editor.reviewCountUnit')}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-white/50">当前间隔</span>
+                      <span className="text-white/50">{t('editor.currentInterval')}</span>
                       <span className="text-white font-medium">
-                        {existingCard.reviewInterval} 天
+                        {existingCard.reviewInterval}{t('editor.currentIntervalUnit')}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-white/50">难度系数</span>
+                      <span className="text-white/50">{t('editor.difficultyFactor')}</span>
                       <span className="text-white font-medium">
                         {existingCard.easeFactor.toFixed(2)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-white/50">上次复习</span>
+                      <span className="text-white/50">{t('editor.lastReview')}</span>
                       <span className="text-white font-medium">
                         {existingCard.lastReviewedAt
-                          ? new Date(existingCard.lastReviewedAt).toLocaleDateString()
-                          : '从未复习'}
+                          ? format(new Date(existingCard.lastReviewedAt), 'yyyy-MM-dd', { locale: dateLocale })
+                          : t('editor.neverReviewed')}
                       </span>
                     </div>
                   </div>

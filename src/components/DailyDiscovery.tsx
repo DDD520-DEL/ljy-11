@@ -11,7 +11,8 @@ import {
 import { Card } from '../types';
 import { useStore } from '../store/useStore';
 import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { zhCN, enUS } from 'date-fns/locale';
+import { useI18n } from '../i18n';
 import { cn } from '../lib/utils';
 
 export function getContentSummary(content: string, maxLength: number = 150): string {
@@ -44,8 +45,11 @@ function getRandomCard(cards: Card[], excludeId?: string): Card | null {
 export default function DailyDiscovery() {
   const navigate = useNavigate();
   const { cards, links, getCardLinks } = useStore();
+  const { language, t } = useI18n();
   const [currentCard, setCurrentCard] = useState<Card | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const dateLocale = language === 'zh-CN' ? zhCN : enUS;
 
   useEffect(() => {
     if (cards.length > 0 && !currentCard) {
@@ -90,13 +94,13 @@ export default function DailyDiscovery() {
             <Lightbulb className="w-6 h-6 text-amber-gold" />
           </div>
           <div>
-            <h3 className="font-display text-xl font-bold text-white">每日发现</h3>
-            <p className="text-xs text-white/50">温故知新，探索已有知识</p>
+            <h3 className="font-display text-xl font-bold text-white">{t('discovery.title')}</h3>
+            <p className="text-xs text-white/50">{t('discovery.subtitle')}</p>
           </div>
         </div>
         <div className="text-center py-8 text-white/50">
           <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
-          <p>还没有知识卡片，快去创建第一张吧！</p>
+          <p>{t('discovery.noCards')}</p>
         </div>
       </div>
     );
@@ -112,8 +116,8 @@ export default function DailyDiscovery() {
               <Lightbulb className="w-6 h-6 text-amber-gold" />
             </div>
             <div>
-              <h3 className="font-display text-xl font-bold text-white">每日发现</h3>
-              <p className="text-xs text-white/50">温故知新，探索已有知识</p>
+              <h3 className="font-display text-xl font-bold text-white">{t('discovery.title')}</h3>
+              <p className="text-xs text-white/50">{t('discovery.subtitle')}</p>
             </div>
           </div>
           <button
@@ -125,7 +129,7 @@ export default function DailyDiscovery() {
                 ? 'bg-white/5 text-white/30 cursor-not-allowed'
                 : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-amber-gold'
             )}
-            title="换一张"
+            title={t('discovery.shuffle')}
           >
             <RefreshCw
               className={cn('w-5 h-5', isRefreshing && 'animate-spin')}
@@ -151,14 +155,14 @@ export default function DailyDiscovery() {
                 <p className="text-xs text-white/40">
                   {formatDistanceToNow(currentCard.updatedAt, {
                     addSuffix: true,
-                    locale: zhCN,
+                    locale: dateLocale,
                   })}
                   {currentCard.lastReviewedAt && (
                     <span className="ml-2">
-                      · 上次复习{' '}
+                      {t('discovery.lastReviewPrefix')}
                       {formatDistanceToNow(currentCard.lastReviewedAt, {
                         addSuffix: true,
-                        locale: zhCN,
+                        locale: dateLocale,
                       })}
                     </span>
                   )}
@@ -166,7 +170,7 @@ export default function DailyDiscovery() {
               </div>
 
               <p className="text-sm text-white/70 leading-relaxed mb-4 line-clamp-3">
-                {getContentSummary(currentCard.content) || '暂无内容'}
+                {getContentSummary(currentCard.content) || t('discovery.noContent')}
               </p>
 
               {currentCard.tags.length > 0 && (
@@ -189,7 +193,7 @@ export default function DailyDiscovery() {
                   <div className="flex items-center gap-2 mb-3">
                     <Link2 className="w-4 h-4 text-amber-gold" />
                     <span className="text-xs font-medium text-white/70">
-                      关联卡片 ({linkedCards.length})
+                      {t('discovery.linkedCardsPrefix')}{linkedCards.length}{t('discovery.linkedCardsSuffix')}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -207,7 +211,7 @@ export default function DailyDiscovery() {
                     ))}
                     {linkedCards.length > 4 && (
                       <span className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white/40">
-                        +{linkedCards.length - 4} 更多
+                        +{linkedCards.length - 4}{t('discovery.moreSuffix')}
                       </span>
                     )}
                   </div>
@@ -215,7 +219,7 @@ export default function DailyDiscovery() {
               )}
 
               <div className="mt-4 flex items-center justify-end text-amber-gold text-sm font-medium group">
-                <span>查看详情</span>
+                <span>{t('discovery.viewDetail')}</span>
                 <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
               </div>
             </motion.div>

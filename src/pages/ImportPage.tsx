@@ -20,8 +20,10 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { ImportSource, ImportPreviewItem, DuplicateAction } from '../types';
+import { useI18n } from '../i18n';
 
 export default function ImportPage() {
+  const { language, t } = useI18n();
   const {
     importBookmarks,
     importAnnotations,
@@ -215,10 +217,10 @@ export default function ImportPage() {
     >
       <motion.div variants={item}>
         <h1 className="font-display text-4xl font-bold text-white mb-2">
-          数据导入
+          {t('import.title')}
         </h1>
         <p className="text-white/60">
-          导入网页书签和电子书标注，自动检测重复内容，预览后选择性导入
+          {t('import.subtitle')}
         </p>
       </motion.div>
 
@@ -236,25 +238,25 @@ export default function ImportPage() {
                   <CheckCircle2 className="w-6 h-6 text-emerald-400" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-white">导入完成</h4>
+                  <h4 className="font-medium text-white">{t('import.completed')}</h4>
                   <div className="flex items-center gap-4 text-sm text-white/60">
                     <span>
                       <span className="text-emerald-400 font-medium">
                         {importResult.created}
                       </span>{' '}
-                      张新建
+                      {t('import.created')}
                     </span>
                     <span>
                       <span className="text-amber-gold font-medium">
                         {importResult.overwritten}
                       </span>{' '}
-                      张覆盖
+                      {t('import.overwritten')}
                     </span>
                     <span>
                       <span className="text-white/50 font-medium">
                         {importResult.skipped}
                       </span>{' '}
-                      张跳过
+                      {t('import.skipped')}
                     </span>
                   </div>
                 </div>
@@ -284,7 +286,7 @@ export default function ImportPage() {
               >
                 <div className="flex items-center justify-center gap-2">
                   <BookOpen className="w-5 h-5" />
-                  书签导入
+                  {t('import.bookmarkTab')}
                 </div>
               </button>
               <button
@@ -297,7 +299,7 @@ export default function ImportPage() {
               >
                 <div className="flex items-center justify-center gap-2">
                   <FileText className="w-5 h-5" />
-                  标注导入
+                  {t('import.annotationTab')}
                 </div>
               </button>
             </div>
@@ -319,16 +321,16 @@ export default function ImportPage() {
                     <Upload className="w-8 h-8 text-amber-gold" />
                   </div>
                   <p className="text-lg font-medium text-white mb-1">
-                    点击或拖放书签文件
+                    {t('import.uploadAreaTitle')}
                   </p>
                   <p className="text-sm text-white/50">
-                    支持 Chrome、Edge、Firefox 导出的 HTML 书签文件
+                    {t('import.uploadAreaDesc')}
                   </p>
                 </div>
                 {isImporting && (
                   <div className="mt-4 text-amber-gold">
                     <Sparkles className="w-5 h-5 inline mr-2 animate-spin" />
-                    正在分析书签并检测重复...
+                    {t('import.analyzingBookmarks')}
                   </div>
                 )}
               </div>
@@ -337,12 +339,7 @@ export default function ImportPage() {
                 <textarea
                   value={annotationText}
                   onChange={(e) => setAnnotationText(e.target.value)}
-                  placeholder="粘贴电子书标注内容，每行一条标注...
-
-例如：
-间隔重复是基于记忆遗忘曲线的学习方法
-艾宾浩斯遗忘曲线描述了记忆衰减的规律
-主动回忆比被动阅读更有效"
+                  placeholder={t('import.annotationPlaceholder')}
                   className="w-full h-48 p-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 resize-none focus:outline-none focus:border-amber-gold/50 focus:ring-2 focus:ring-amber-gold/20"
                 />
                 <button
@@ -353,12 +350,12 @@ export default function ImportPage() {
                   {isImporting ? (
                     <>
                       <Sparkles className="w-5 h-5 animate-spin" />
-                      分析中...
+                      {t('import.analyzing')}
                     </>
                   ) : (
                     <>
                       <Plus className="w-5 h-5" />
-                      导入标注
+                      {t('import.importAnnotations')}
                     </>
                   )}
                 </button>
@@ -371,7 +368,7 @@ export default function ImportPage() {
               <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                 <h3 className="font-display text-lg font-bold text-white flex items-center gap-2">
                   <Eye className="w-5 h-5 text-amber-gold" />
-                  导入预览 ({filteredPreviewItems.length}/{previewItems.length})
+                  {t('import.previewPrefix')}{filteredPreviewItems.length}/{previewItems.length})
                 </h3>
 
                 <div className="flex items-center gap-2">
@@ -384,7 +381,7 @@ export default function ImportPage() {
                           : 'text-white/60 hover:text-white'
                       }`}
                     >
-                      全部
+                      {t('import.filterAll')}
                     </button>
                     <button
                       onClick={() => setFilterType('bookmark')}
@@ -394,7 +391,7 @@ export default function ImportPage() {
                           : 'text-white/60 hover:text-white'
                       }`}
                     >
-                      书签
+                      {t('import.filterBookmarks')}
                     </button>
                     <button
                       onClick={() => setFilterType('annotation')}
@@ -404,7 +401,7 @@ export default function ImportPage() {
                           : 'text-white/60 hover:text-white'
                       }`}
                     >
-                      标注
+                      {t('import.filterAnnotations')}
                     </button>
                   </div>
 
@@ -417,7 +414,7 @@ export default function ImportPage() {
                     }`}
                   >
                     <Filter className="w-4 h-4" />
-                    仅重复 ({duplicateCount})
+                    {t('import.onlyDuplicatePrefix')}{duplicateCount}{t('import.onlyDuplicateSuffix')}
                   </button>
                 </div>
               </div>
@@ -432,34 +429,34 @@ export default function ImportPage() {
                       className="w-4 h-4 rounded bg-white/10 border-white/30 text-amber-gold focus:ring-amber-gold/50"
                     />
                     <span className="text-sm text-white/70">
-                      {allFilteredSelected ? '取消全选' : '全选'} (
+                      {allFilteredSelected ? t('import.deselectAll') : t('import.selectAll')} (
                       {selectedCount}/{filteredPreviewItems.length})
                     </span>
                   </label>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-white/50">批量设置：</span>
+                  <span className="text-sm text-white/50">{t('import.batchSetTag')}</span>
                   <button
                     onClick={() => applyBulkAction('import')}
                     className="px-3 py-1.5 text-xs rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all flex items-center gap-1"
                   >
                     <Plus className="w-3 h-3" />
-                    新建
+                    {t('import.batchCreate')}
                   </button>
                   <button
                     onClick={() => applyBulkAction('overwrite')}
                     className="px-3 py-1.5 text-xs rounded-lg bg-amber-gold/20 text-amber-gold border border-amber-gold/30 hover:bg-amber-gold/30 transition-all flex items-center gap-1"
                   >
                     <RefreshCw className="w-3 h-3" />
-                    覆盖
+                    {t('import.batchOverwrite')}
                   </button>
                   <button
                     onClick={() => applyBulkAction('skip')}
                     className="px-3 py-1.5 text-xs rounded-lg bg-white/10 text-white/60 border border-white/20 hover:bg-white/20 hover:text-white transition-all flex items-center gap-1"
                   >
                     <SkipForward className="w-3 h-3" />
-                    跳过
+                    {t('import.batchSkip')}
                   </button>
                 </div>
               </div>
@@ -540,7 +537,7 @@ export default function ImportPage() {
                                   <div className="mt-3">
                                     <p className="text-xs text-white/50 mb-2 flex items-center gap-1">
                                       <Link className="w-3 h-3" />
-                                      建议关联：
+                                      {t('import.suggestLink')}
                                     </p>
                                     <div className="flex flex-wrap gap-2">
                                       {source.suggestedLinks.map((cardId) => {
@@ -568,7 +565,7 @@ export default function ImportPage() {
                               <div className="flex items-center gap-2 text-sm text-rose-review-light">
                                 <AlertTriangle className="w-4 h-4" />
                                 <span>
-                                  检测到 {previewItem.duplicates.length} 个疑似重复项
+                                  {t('import.duplicatePrefix')} {previewItem.duplicates.length} {t('import.duplicateSuffix')}
                                 </span>
                               </div>
                               <div className="space-y-1.5">
@@ -586,7 +583,7 @@ export default function ImportPage() {
                                       <span
                                         className={`text-xs px-2 py-0.5 rounded-full border flex-shrink-0 ${color}`}
                                       >
-                                        {(dup.similarity * 100).toFixed(0)}% 相似
+                                        {(dup.similarity * 100).toFixed(0)}{t('import.similaritySuffix')}
                                       </span>
                                     </div>
                                   );
@@ -596,7 +593,7 @@ export default function ImportPage() {
                           )}
 
                           <div className="mt-3 flex items-center gap-2">
-                            <span className="text-xs text-white/40 mr-1">操作：</span>
+                            <span className="text-xs text-white/40 mr-1">{t('import.actionLabel')}</span>
                             <button
                               onClick={() => updateItemAction(source.id, 'import')}
                               className={`px-3 py-1.5 text-xs rounded-lg transition-all flex items-center gap-1 ${
@@ -606,7 +603,7 @@ export default function ImportPage() {
                               }`}
                             >
                               <Plus className="w-3 h-3" />
-                              新建卡片
+                              {t('import.actionCreate')}
                             </button>
                             {hasDuplicates && (
                               <>
@@ -621,7 +618,7 @@ export default function ImportPage() {
                                   }`}
                                 >
                                   <RefreshCw className="w-3 h-3" />
-                                  覆盖合并
+                                  {t('import.actionOverwrite')}
                                 </button>
                                 <button
                                   onClick={() =>
@@ -634,7 +631,7 @@ export default function ImportPage() {
                                   }`}
                                 >
                                   <SkipForward className="w-3 h-3" />
-                                  跳过
+                                  {t('import.actionSkip')}
                                 </button>
                               </>
                             )}
@@ -649,24 +646,24 @@ export default function ImportPage() {
               {filteredPreviewItems.length === 0 && (
                 <div className="py-12 text-center text-white/40">
                   {showDuplicatesOnly
-                    ? '没有检测到重复项'
-                    : '暂无待导入数据'}
+                    ? t('import.noDuplicates')
+                    : t('import.noData')}
                 </div>
               )}
 
               <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
                 <div className="text-sm text-white/50">
-                  已选择{' '}
+                  {t('import.selectedPrefix')}{' '}
                   <span className="text-amber-gold font-medium">
                     {selectedCount}
                   </span>{' '}
-                  项
+                  {t('import.selectedSuffix')}
                 </div>
                 <div className="flex gap-3">
                   {pendingImports.length > 0 && (
                     <div className="flex items-center gap-2 text-xs text-white/40">
                       <span className="text-rose-review-light">
-                        ⚠ {duplicateCount} 项疑似重复
+                        {t('import.duplicateWarnPrefix')}{duplicateCount} {t('import.duplicateWarnSuffix')}
                       </span>
                     </div>
                   )}
@@ -678,12 +675,12 @@ export default function ImportPage() {
                     {isProcessing ? (
                       <>
                         <Sparkles className="w-5 h-5 animate-spin" />
-                        处理中...
+                        {t('import.processing')}
                       </>
                     ) : (
                       <>
                         <Check className="w-5 h-5" />
-                        确认导入 ({selectedCount})
+                        {t('import.confirmPrefix')}{selectedCount}{t('import.confirmSuffix')}
                       </>
                     )}
                   </button>
@@ -696,7 +693,7 @@ export default function ImportPage() {
             <div className="glass-card p-6">
               <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-amber-gold" />
-                待处理 ({pendingImports.length})
+                {t('import.pendingPrefix')}{pendingImports.length}{t('import.pendingSuffix')}
               </h3>
               <div className="space-y-3">
                 {pendingImports.map((item) => (
@@ -735,7 +732,7 @@ export default function ImportPage() {
                       <div className="mb-3">
                         <p className="text-xs text-white/50 mb-2 flex items-center gap-1">
                           <Link className="w-3 h-3" />
-                          建议关联：
+                          {t('import.suggestLink')}
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {item.suggestedLinks.map((cardId) => {
@@ -760,7 +757,7 @@ export default function ImportPage() {
                       >
                         <div className="flex items-center justify-center gap-1">
                           <Plus className="w-4 h-4" />
-                          创建卡片并关联
+                          {t('import.createAndLink')}
                         </div>
                       </button>
                       <button
@@ -780,29 +777,29 @@ export default function ImportPage() {
         <motion.div variants={item} className="space-y-6">
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4">
-              导入统计
+              {t('import.statsTitle')}
             </h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-white/60">待处理</span>
+                <span className="text-white/60">{t('import.statsPending')}</span>
                 <span className="text-amber-gold font-medium">
                   {pendingImports.length}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-white/60">疑似重复</span>
+                <span className="text-white/60">{t('import.statsDuplicates')}</span>
                 <span className="text-rose-review-light font-medium">
                   {duplicateCount}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-white/60">已创建卡片</span>
+                <span className="text-white/60">{t('import.statsCreated')}</span>
                 <span className="text-emerald-mastered font-medium">
                   {processedImports.length}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-white/60">总计导入</span>
+                <span className="text-white/60">{t('import.statsTotal')}</span>
                 <span className="text-white font-medium">
                   {importSources.length}
                 </span>
@@ -814,7 +811,7 @@ export default function ImportPage() {
             <div className="glass-card p-6">
               <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <Check className="w-5 h-5 text-emerald-mastered" />
-                已处理
+                {t('import.processed')}
               </h3>
               <div className="space-y-2 max-h-80 overflow-y-auto">
                 {processedImports.slice(0, 10).map((item) => (
@@ -836,38 +833,38 @@ export default function ImportPage() {
 
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4">
-              导入指南
+              {t('import.guideTitle')}
             </h3>
             <div className="space-y-3 text-sm text-white/70">
               <div className="flex gap-3">
                 <span className="w-6 h-6 rounded-full bg-amber-gold/20 text-amber-gold flex items-center justify-center flex-shrink-0 text-xs font-bold">
                   1
                 </span>
-                <p>导出浏览器书签为 HTML 文件或复制标注文本</p>
+                <p>{t('import.guideStep1')}</p>
               </div>
               <div className="flex gap-3">
                 <span className="w-6 h-6 rounded-full bg-amber-gold/20 text-amber-gold flex items-center justify-center flex-shrink-0 text-xs font-bold">
                   2
                 </span>
-                <p>上传书签文件或粘贴标注内容</p>
+                <p>{t('import.guideStep2')}</p>
               </div>
               <div className="flex gap-3">
                 <span className="w-6 h-6 rounded-full bg-rose-review/20 text-rose-review flex items-center justify-center flex-shrink-0 text-xs font-bold">
                   3
                 </span>
-                <p>系统自动检测与现有卡片的重复情况</p>
+                <p>{t('import.guideStep3')}</p>
               </div>
               <div className="flex gap-3">
                 <span className="w-6 h-6 rounded-full bg-amber-gold/20 text-amber-gold flex items-center justify-center flex-shrink-0 text-xs font-bold">
                   4
                 </span>
-                <p>逐条勾选并选择「新建 / 覆盖 / 跳过」</p>
+                <p>{t('import.guideStep4')}</p>
               </div>
               <div className="flex gap-3">
                 <span className="w-6 h-6 rounded-full bg-amber-gold/20 text-amber-gold flex items-center justify-center flex-shrink-0 text-xs font-bold">
                   5
                 </span>
-                <p>确认后批量导入并自动建立关联</p>
+                <p>{t('import.guideStep5')}</p>
               </div>
             </div>
           </div>
@@ -875,28 +872,28 @@ export default function ImportPage() {
           <div className="glass-card p-6 border-amber-gold/20">
             <h3 className="font-display text-lg font-bold text-amber-gold mb-3 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5" />
-              相似度说明
+              {t('import.similarityTitle')}
             </h3>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-rose-review" />
                 <span className="text-white/70">
-                  <span className="text-rose-review-light font-medium">高重复</span>{' '}
-                  (≥85%) - 极可能为同一内容
+                  <span className="text-rose-review-light font-medium">{t('import.highDup')}</span>{' '}
+                  {t('import.highDupDesc')}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-amber-gold" />
                 <span className="text-white/70">
-                  <span className="text-amber-gold font-medium">中重复</span>{' '}
-                  (70%-85%) - 建议覆盖合并
+                  <span className="text-amber-gold font-medium">{t('import.mediumDup')}</span>{' '}
+                  {t('import.mediumDupDesc')}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-blue-400" />
                 <span className="text-white/70">
-                  <span className="text-blue-400 font-medium">低重复</span>{' '}
-                  (60%-70%) - 可能相关但不同
+                  <span className="text-blue-400 font-medium">{t('import.lowDup')}</span>{' '}
+                  {t('import.lowDupDesc')}
                 </span>
               </div>
             </div>

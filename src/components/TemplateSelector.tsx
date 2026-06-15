@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, FileText, Tag, Check } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useI18n } from '../i18n';
 import { CardTemplate } from '../types';
 
 interface TemplateSelectorProps {
@@ -11,21 +12,22 @@ interface TemplateSelectorProps {
 
 export function TemplateSelector({ onSelect, onClose }: TemplateSelectorProps) {
   const { cardTemplates } = useStore();
+  const { language, t } = useI18n();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredTemplates = cardTemplates.filter((t) => {
+  const filteredTemplates = cardTemplates.filter((template) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
-      t.name.toLowerCase().includes(q) ||
-      t.description.toLowerCase().includes(q) ||
-      t.defaultTags.some((tag) => tag.toLowerCase().includes(q))
+      template.name.toLowerCase().includes(q) ||
+      template.description.toLowerCase().includes(q) ||
+      template.defaultTags.some((tag) => tag.toLowerCase().includes(q))
     );
   });
 
   const handleConfirm = () => {
-    const template = cardTemplates.find((t) => t.id === selectedId);
+    const template = cardTemplates.find((tmpl) => tmpl.id === selectedId);
     if (template) {
       onSelect(template);
     }
@@ -48,7 +50,7 @@ export function TemplateSelector({ onSelect, onClose }: TemplateSelectorProps) {
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-display text-2xl font-bold text-white">
-            选择卡片模板
+            {t('templateSelector.title')}
           </h3>
           <button
             onClick={onClose}
@@ -59,13 +61,13 @@ export function TemplateSelector({ onSelect, onClose }: TemplateSelectorProps) {
         </div>
 
         <p className="text-sm text-white/50 mb-4">
-          从模板快速填充标题、正文结构和标签，也可以创建后修改
+          {t('templateSelector.description')}
         </p>
 
         <div className="mb-4">
           <input
             type="text"
-            placeholder="搜索模板..."
+            placeholder={t('templateSelector.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="input-field"
@@ -110,7 +112,7 @@ export function TemplateSelector({ onSelect, onClose }: TemplateSelectorProps) {
                         )}
                       </div>
                       <p className="text-xs text-white/50 truncate">
-                        {template.description || '暂无描述'}
+                        {template.description || t('templateSelector.noDescription')}
                       </p>
                     </div>
                   </div>
@@ -124,7 +126,7 @@ export function TemplateSelector({ onSelect, onClose }: TemplateSelectorProps) {
                     >
                       {template.titleFormat && (
                         <div className="px-3 py-2 rounded-lg bg-white/5">
-                          <span className="text-xs text-white/40">标题：</span>
+                          <span className="text-xs text-white/40">{t('templateSelector.titleLabel')}</span>
                           <span className="text-sm text-amber-gold">
                             {template.titleFormat}
                           </span>
@@ -133,7 +135,7 @@ export function TemplateSelector({ onSelect, onClose }: TemplateSelectorProps) {
                       {template.contentSkeleton && (
                         <div className="px-3 py-2 rounded-lg bg-white/5">
                           <span className="text-xs text-white/40 block mb-1">
-                            正文预览：
+                            {t('templateSelector.bodyPreview')}
                           </span>
                           <pre className="text-xs text-white/60 whitespace-pre-wrap font-mono leading-relaxed line-clamp-3">
                             {template.contentSkeleton}
@@ -163,11 +165,11 @@ export function TemplateSelector({ onSelect, onClose }: TemplateSelectorProps) {
                 <FileText className="w-8 h-8 text-white/20" />
               </div>
               <p className="text-sm text-white/40">
-                {searchQuery ? '没有匹配的模板' : '还没有创建模板'}
+                {searchQuery ? t('templateSelector.noMatch') : t('templateSelector.noTemplates')}
               </p>
               {!searchQuery && (
                 <p className="text-xs text-white/30 mt-1">
-                  前往「模板管理」页面创建模板
+                  {t('templateSelector.goCreate')}
                 </p>
               )}
             </div>
@@ -176,14 +178,14 @@ export function TemplateSelector({ onSelect, onClose }: TemplateSelectorProps) {
 
         <div className="flex gap-3 pt-4 border-t border-white/10">
           <button onClick={onClose} className="flex-1 btn-secondary">
-            空白卡片
+            {t('templateSelector.blankCard')}
           </button>
           <button
             onClick={handleConfirm}
             disabled={!selectedId}
             className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            使用模板
+            {t('templateSelector.useTemplate')}
           </button>
         </div>
       </motion.div>

@@ -15,7 +15,8 @@ import {
 import { CardVersion } from '../types';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { zhCN, enUS } from 'date-fns/locale';
+import { useI18n } from '../i18n';
 
 interface CardVersionHistoryProps {
   versions: CardVersion[];
@@ -70,6 +71,8 @@ export default function CardVersionHistory({
   currentTags,
   onRestore,
 }: CardVersionHistoryProps) {
+  const { language, t } = useI18n();
+  const dateLocale = language === 'zh-CN' ? zhCN : enUS;
   const [isExpanded, setIsExpanded] = useState(false);
   const [compareVersionId, setCompareVersionId] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
@@ -90,7 +93,7 @@ export default function CardVersionHistory({
   }, [compareVersion, currentTitle]);
 
   const handleRestore = async (versionId: string) => {
-    if (!confirm('确定要回退到此版本吗？当前内容将保存为新版本。')) return;
+    if (!confirm(t('version.confirmRollback'))) return;
     setRestoringId(versionId);
     try {
       await onRestore(versionId);
@@ -110,10 +113,10 @@ export default function CardVersionHistory({
           <History className="w-5 h-5 text-amber-gold" />
           <div>
             <h3 className="font-display text-lg font-bold text-white">
-              版本历史
+              {t('version.title')}
             </h3>
             <p className="text-sm text-white/60">
-              共 {versions.length} 个版本（最多保留 20 个）
+              {t('version.totalPrefix')}{versions.length}{t('version.totalSuffix')}
             </p>
           </div>
         </div>
@@ -137,9 +140,9 @@ export default function CardVersionHistory({
               {versions.length === 0 ? (
                 <div className="text-center py-8">
                   <History className="w-12 h-12 text-white/20 mx-auto mb-3" />
-                  <p className="text-white/40 text-sm">暂无历史版本</p>
+                  <p className="text-white/40 text-sm">{t('version.noVersions')}</p>
                   <p className="text-white/30 text-xs mt-1">
-                    保存卡片后将自动创建版本快照
+                    {t('version.noVersionsHint')}
                   </p>
                 </div>
               ) : (
@@ -150,7 +153,7 @@ export default function CardVersionHistory({
                         <div className="flex items-center gap-2">
                           <GitCompare className="w-4 h-4 text-amber-gold" />
                           <span className="text-sm font-medium text-amber-gold">
-                            对比: {format(new Date(compareVersion.createdAt), 'yyyy-MM-dd HH:mm', { locale: zhCN })} → 当前版本
+                            {t('version.compareTo')}{format(new Date(compareVersion.createdAt), 'yyyy-MM-dd HH:mm', { locale: dateLocale })}{t('version.compareToCurrent')}
                           </span>
                         </div>
                         <button
@@ -164,7 +167,7 @@ export default function CardVersionHistory({
                       <div className="space-y-3">
                         <div>
                           <div className="text-xs text-white/50 mb-1 flex items-center gap-1">
-                            <FileText className="w-3 h-3" /> 标题
+                            <FileText className="w-3 h-3" />{t('version.titleCompare')}
                           </div>
                           <div className="font-mono text-xs space-y-0.5 bg-black/20 rounded-lg p-2">
                             {titleDiff?.map((seg, i) => (
@@ -220,7 +223,7 @@ export default function CardVersionHistory({
                         </div>
 
                         <div>
-                          <div className="text-xs text-white/50 mb-1">内容差异</div>
+                          <div className="text-xs text-white/50 mb-1">{t('version.contentCompare')}</div>
                           <div className="font-mono text-xs space-y-0.5 max-h-64 overflow-auto bg-black/20 rounded-lg p-2">
                             {diff.map((seg, i) => (
                               <div
@@ -262,7 +265,7 @@ export default function CardVersionHistory({
                             <div className="flex items-center gap-2 mb-1">
                               <Clock className="w-3.5 h-3.5 text-white/40 flex-shrink-0" />
                               <span className="text-sm font-medium text-white truncate">
-                                {format(new Date(version.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale: zhCN })}
+                                {format(new Date(version.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale: dateLocale })}
                               </span>
                               {index === 0 && (
                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-gold/20 text-amber-gold flex items-center gap-0.5">
@@ -317,7 +320,7 @@ export default function CardVersionHistory({
                               onClick={() => handleRestore(version.id)}
                               disabled={restoringId === version.id}
                               className="p-1.5 rounded-lg hover:bg-emerald-500/20 text-white/60 hover:text-emerald-400 transition-colors disabled:opacity-50"
-                              title="回退到此版本"
+                              title={t('version.restoreTooltip')}
                             >
                               <RotateCcw
                                 className={cn(

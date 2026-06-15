@@ -95,7 +95,7 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
   };
 
   const handleDeleteSpace = async (id: string) => {
-    if (confirm('确定要删除此知识空间吗？空间内的卡片将移至"未分类"。')) {
+    if (confirm(t('space.deleteConfirm'))) {
       await deleteSpace(id);
     }
   };
@@ -227,19 +227,21 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
                         type="text"
                         value={editSpaceDesc}
                         onChange={(e) => setEditSpaceDesc(e.target.value)}
-                        placeholder="描述（可选）"
+                        placeholder={t('space.description')}
                         className="w-full bg-transparent border-none outline-none text-xs text-white/70 placeholder-white/30"
                       />
                       <div className="flex gap-1">
                         <button
                           onClick={handleSaveEdit}
                           className="p-1 rounded hover:bg-white/10 text-emerald-400"
+                          title={t('common.save')}
                         >
                           <Check className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => setEditingSpaceId(null)}
                           className="p-1 rounded hover:bg-white/10 text-white/50"
+                          title={t('space.cancel')}
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -273,6 +275,7 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
                             handleDeleteSpace(space.id);
                           }}
                           className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-rose-review-light transition-colors"
+                          title={t('common.delete')}
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -298,7 +301,7 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
                       if (e.key === 'Enter') handleCreateSpace();
                       if (e.key === 'Escape') setShowCreateSpace(false);
                     }}
-                    placeholder="空间名称"
+                    placeholder={t('space.spaceName')}
                     className="w-full bg-transparent border-none outline-none text-sm text-white placeholder-white/30"
                     autoFocus
                   />
@@ -306,7 +309,7 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
                     type="text"
                     value={newSpaceDesc}
                     onChange={(e) => setNewSpaceDesc(e.target.value)}
-                    placeholder="描述（可选）"
+                    placeholder={t('space.description')}
                     className="w-full bg-transparent border-none outline-none text-xs text-white/70 placeholder-white/30"
                   />
                   <div className="space-y-2">
@@ -345,14 +348,14 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
                       onClick={() => setShowCreateSpace(false)}
                       className="flex-1 px-2 py-1.5 text-xs text-white/50 hover:text-white/70 rounded-lg hover:bg-white/5 transition-colors"
                     >
-                      取消
+                      {t('space.cancel')}
                     </button>
                     <button
                       onClick={handleCreateSpace}
                       disabled={!newSpaceName.trim()}
                       className="flex-1 px-2 py-1.5 text-xs bg-amber-gold/20 text-amber-gold rounded-lg hover:bg-amber-gold/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      创建
+                      {t('space.create')}
                     </button>
                   </div>
                 </div>

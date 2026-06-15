@@ -16,29 +16,33 @@ import { useStore } from '../store/useStore';
 import { MarkdownViewer } from '../components/MarkdownViewer';
 import { ReviewRating, ReviewPriorityLevel } from '../types';
 import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
-
-const ratingLabels: Record<ReviewRating, { label: string; color: string; description: string }> = {
-  0: { label: '完全忘记', color: 'bg-rose-500', description: '完全无法回忆' },
-  1: { label: '几乎忘记', color: 'bg-orange-500', description: '几乎无法回忆' },
-  2: { label: '困难回忆', color: 'bg-amber-500', description: '回忆有困难' },
-  3: { label: '勉强回忆', color: 'bg-yellow-500', description: '勉强能够回忆' },
-  4: { label: '轻松回忆', color: 'bg-lime-500', description: '轻松回忆' },
-  5: { label: '完美回忆', color: 'bg-emerald-500', description: '完美回忆' },
-};
-
-const priorityBadge: Record<ReviewPriorityLevel, { label: string; color: string }> = {
-  high: { label: '高优先', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
-  medium: { label: '中优先', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-  low: { label: '低优先', color: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
-};
+import { zhCN, enUS } from 'date-fns/locale';
+import { useI18n } from '../i18n';
 
 export default function ReviewPage() {
   const { getReviewQueue, submitReview, cards, links, activeSpaceId, knowledgeSpaces } = useStore();
+  const { language, t } = useI18n();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [completedToday, setCompletedToday] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+
+  const dateLocale = language === 'zh-CN' ? zhCN : enUS;
+
+  const ratingLabels: Record<ReviewRating, { label: string; color: string; description: string }> = {
+    0: { label: t('review.score0Label'), color: 'bg-rose-500', description: t('review.score0Desc') },
+    1: { label: t('review.score1Label'), color: 'bg-orange-500', description: t('review.score1Desc') },
+    2: { label: t('review.score2Label'), color: 'bg-amber-500', description: t('review.score2Desc') },
+    3: { label: t('review.score3Label'), color: 'bg-yellow-500', description: t('review.score3Desc') },
+    4: { label: t('review.score4Label'), color: 'bg-lime-500', description: t('review.score4Desc') },
+    5: { label: t('review.score5Label'), color: 'bg-emerald-500', description: t('review.score5Desc') },
+  };
+
+  const priorityBadge: Record<ReviewPriorityLevel, { label: string; color: string }> = {
+    high: { label: t('review.highPriority'), color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
+    medium: { label: t('review.mediumPriority'), color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+    low: { label: t('review.lowPriority'), color: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
+  };
 
   const reviewQueue = getReviewQueue();
   const currentCard = reviewQueue[currentIndex];
@@ -88,26 +92,26 @@ export default function ReviewPage() {
           <TrendingUp className="w-12 h-12 text-emerald-mastered" />
         </div>
         <h1 className="font-display text-4xl font-bold text-white mb-2">
-          太棒了！
+          {t('review.completedTitle')}
         </h1>
-        <p className="text-white/60 mb-2">今日复习已完成</p>
+        <p className="text-white/60 mb-2">{t('review.completedSubtitle')}</p>
         <p className="text-white/40 mb-8">
-          你已经完成了 {completedToday} 张卡片的复习
+          {t('review.completedDescPrefix')} {completedToday} {t('review.completedDescSuffix')}
         </p>
         <div className="glass-card p-6 max-w-md">
           <h3 className="font-display text-lg font-bold text-white mb-4">
-            学习统计
+            {t('review.statsTitle')}
           </h3>
           <div className="grid grid-cols-2 gap-4 text-center">
             <div>
               <p className="text-3xl font-bold text-amber-gold">{cards.length}</p>
-              <p className="text-xs text-white/50">总卡片数</p>
+              <p className="text-xs text-white/50">{t('review.statsTotalCards')}</p>
             </div>
             <div>
               <p className="text-3xl font-bold text-emerald-mastered">
                 {links.length}
               </p>
-              <p className="text-xs text-white/50">知识关联</p>
+              <p className="text-xs text-white/50">{t('review.statsKnowledgeLinks')}</p>
             </div>
           </div>
         </div>
@@ -124,10 +128,10 @@ export default function ReviewPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-4xl font-bold text-white mb-2">
-            复习中心
+            {t('review.title')}
           </h1>
           <p className="text-white/60">
-            基于间隔重复算法，按优先级智能排序复习内容
+            {t('review.subtitle')}
             {activeSpaceId && knowledgeSpaces.find((s) => s.id === activeSpaceId) && (
               <span className="ml-2 text-amber-gold">
                 · {knowledgeSpaces.find((s) => s.id === activeSpaceId)!.icon} {knowledgeSpaces.find((s) => s.id === activeSpaceId)!.name}
@@ -140,7 +144,7 @@ export default function ReviewPage() {
             <p className="text-2xl font-bold text-white">
               {currentIndex + 1} / {reviewQueue.length}
             </p>
-            <p className="text-xs text-white/50">今日进度</p>
+            <p className="text-xs text-white/50">{t('review.todayProgress')}</p>
           </div>
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-gold/20 to-amber-gold-light/20 flex items-center justify-center">
             <Brain className="w-8 h-8 text-amber-gold" />
@@ -167,7 +171,7 @@ export default function ReviewPage() {
               <p className="text-xl font-bold text-white">
                 {reviewQueue.length}
               </p>
-              <p className="text-xs text-white/50">待复习</p>
+              <p className="text-xs text-white/50">{t('review.toReview')}</p>
             </div>
           </div>
         </div>
@@ -176,7 +180,7 @@ export default function ReviewPage() {
             <Check className="w-5 h-5 text-emerald-mastered" />
             <div>
               <p className="text-xl font-bold text-white">{completedToday}</p>
-              <p className="text-xs text-white/50">已完成</p>
+              <p className="text-xs text-white/50">{t('review.completed')}</p>
             </div>
           </div>
         </div>
@@ -189,7 +193,7 @@ export default function ReviewPage() {
                 <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">{reviewQueue.filter(c => c.reviewPriority === 'medium').length}</span>
                 <span className="text-xs px-1.5 py-0.5 rounded bg-slate-500/20 text-slate-400">{reviewQueue.filter(c => c.reviewPriority === 'low').length}</span>
               </div>
-              <p className="text-xs text-white/50 mt-0.5">高/中/低优先</p>
+              <p className="text-xs text-white/50 mt-0.5">{t('review.priority')}</p>
             </div>
           </div>
         </div>
@@ -200,7 +204,7 @@ export default function ReviewPage() {
               <p className="text-xl font-bold text-white">
                 {currentCard?.reviewInterval || 1}
               </p>
-              <p className="text-xs text-white/50">复习间隔(天)</p>
+              <p className="text-xs text-white/50">{t('review.intervalLabel')}</p>
             </div>
           </div>
         </div>
@@ -228,16 +232,16 @@ export default function ReviewPage() {
                   </span>
                   {currentCard.lastReviewedAt && (
                     <span className="text-xs text-white/40">
-                      上次复习:{' '}
+                      {t('review.lastReviewPrefix')}
                       {formatDistanceToNow(new Date(currentCard.lastReviewedAt), {
                         addSuffix: true,
-                        locale: zhCN,
+                        locale: dateLocale,
                       })}
                     </span>
                   )}
                   {currentCard.customNextReviewDate && (
                     <span className="text-xs text-blue-400/70">
-                      自定义: {new Date(currentCard.customNextReviewDate).toLocaleDateString()}
+                      {t('review.customDatePrefix')}{new Date(currentCard.customNextReviewDate).toLocaleDateString(language === 'zh-CN' ? 'zh-CN' : 'en-US')}
                     </span>
                   )}
                 </div>
@@ -260,7 +264,7 @@ export default function ReviewPage() {
                   <MarkdownViewer content={currentCard.content} />
                   {cardLinks.length > 0 && (
                     <div className="mt-6 pt-6 border-t border-white/10">
-                      <p className="text-sm text-white/50 mb-3">相关链接</p>
+                      <p className="text-sm text-white/50 mb-3">{t('review.relatedLinks')}</p>
                       <div className="flex flex-wrap gap-2">
                         {cardLinks.slice(0, 5).map((link) => {
                           const linkedCardId =
@@ -289,10 +293,10 @@ export default function ReviewPage() {
                     <BookOpen className="w-10 h-10 text-amber-gold" />
                   </div>
                   <p className="text-xl text-white/80 mb-2">
-                    回忆这张卡片的内容...
+                    {t('review.recallHintTitle')}
                   </p>
                   <p className="text-white/50">
-                    点击下方按钮查看答案，然后评估你的记忆程度
+                    {t('review.recallHintDesc')}
                   </p>
                 </div>
               )}
@@ -303,7 +307,7 @@ export default function ReviewPage() {
                 onClick={() => setShowAnswer(true)}
                 className="w-full btn-primary py-4 text-lg"
               >
-                显示答案
+                {t('review.showAnswer')}
               </button>
             )}
 
@@ -314,7 +318,7 @@ export default function ReviewPage() {
                 className="space-y-4"
               >
                 <p className="text-center text-white/70">
-                  你对这张卡片的记忆程度如何？
+                  {t('review.howWellRemembered')}
                 </p>
                 <div className="grid grid-cols-6 gap-2">
                   {([0, 1, 2, 3, 4, 5] as ReviewRating[]).map((rating) => (
@@ -346,7 +350,7 @@ export default function ReviewPage() {
                     className="flex-1 btn-secondary flex items-center justify-center gap-2"
                   >
                     <RotateCcw className="w-4 h-4" />
-                    稍后复习
+                    {t('review.reviewLater')}
                   </button>
                 </div>
               </motion.div>
@@ -358,25 +362,25 @@ export default function ReviewPage() {
       <div className="glass-card p-6">
         <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-amber-gold" />
-          SM-2 算法说明
+          {t('review.sm2Title')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-white/70">
           <div className="p-4 rounded-xl bg-white/5">
-            <p className="font-medium text-white mb-2">评分 0-2</p>
+            <p className="font-medium text-white mb-2">{t('review.sm2Score02Title')}</p>
             <p className="text-xs text-white/50">
-              记忆困难，重置复习间隔为1天，重新开始学习
+              {t('review.sm2Score02Desc')}
             </p>
           </div>
           <div className="p-4 rounded-xl bg-white/5">
-            <p className="font-medium text-white mb-2">评分 3-4</p>
+            <p className="font-medium text-white mb-2">{t('review.sm2Score34Title')}</p>
             <p className="text-xs text-white/50">
-              记忆一般，按正常间隔递增，略微降低难度系数
+              {t('review.sm2Score34Desc')}
             </p>
           </div>
           <div className="p-4 rounded-xl bg-white/5">
-            <p className="font-medium text-white mb-2">评分 5</p>
+            <p className="font-medium text-white mb-2">{t('review.sm2Score5Title')}</p>
             <p className="text-xs text-white/50">
-              记忆完美，延长复习间隔，提高难度系数
+              {t('review.sm2Score5Desc')}
             </p>
           </div>
         </div>

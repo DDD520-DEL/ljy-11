@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Copy, Download, CheckCircle2, FileText, Clock, Flame, Network, TrendingUp, BarChart3 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { WeeklyReport } from '../types';
+import { useI18n } from '../i18n';
 
 interface WeeklyReportModalProps {
   isOpen: boolean;
@@ -11,11 +12,12 @@ interface WeeklyReportModalProps {
 
 export default function WeeklyReportModal({ isOpen, onClose }: WeeklyReportModalProps) {
   const { getWeeklyReport, getWeeklyReportMarkdown } = useStore();
+  const { language, t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [tab, setTab] = useState<'preview' | 'markdown'>('preview');
 
   const report = getWeeklyReport();
-  const markdown = getWeeklyReportMarkdown();
+  const markdown = getWeeklyReportMarkdown(t, language);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(markdown);
@@ -28,7 +30,7 @@ export default function WeeklyReportModal({ isOpen, onClose }: WeeklyReportModal
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `学习周报_${report.startDate}_${report.endDate}.md`;
+    a.download = `${t('report.fileNamePrefix')}${report.startDate}_${report.endDate}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -39,20 +41,35 @@ export default function WeeklyReportModal({ isOpen, onClose }: WeeklyReportModal
     const totalMinutes = Math.floor(seconds / 60);
     const hours = Math.floor(totalMinutes / 60);
     const mins = totalMinutes % 60;
-    return hours > 0 ? `${hours}小时${mins}分钟` : `${mins}分钟`;
+    const hourUnit = t('report.hourUnit');
+    const minuteUnit = t('report.minuteUnit');
+    if (hours > 0) {
+      if (language === 'en-US') {
+        return `${hours}${hourUnit} ${mins}${minuteUnit}`;
+      }
+      return `${hours}${hourUnit}${mins}${minuteUnit}`;
+    }
+    return `${mins}${minuteUnit}`;
   };
 
   const fmt = (dateStr: string) => {
     const d = new Date(dateStr);
-    return `${d.getMonth() + 1}月${d.getDate()}日`;
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    const monthUnit = t('report.monthUnit');
+    const dayUnit = t('report.dayUnit');
+    if (language === 'en-US') {
+      return `${month}${monthUnit}${day}${dayUnit}`;
+    }
+    return `${month}${monthUnit}${day}${dayUnit}`;
   };
 
   const summaryItems = [
-    { icon: TrendingUp, label: '复习完成率', value: `${report.reviewCompletionRate}%`, color: 'from-emerald-mastered to-teal-500' },
-    { icon: FileText, label: '新增卡片', value: `${report.newCardsCount} 张`, color: 'from-amber-gold to-amber-gold-light' },
-    { icon: Network, label: '新增关联', value: `${report.newLinksCount} 条`, color: 'from-blue-500 to-cyan-500' },
-    { icon: Clock, label: '总阅读时长', value: formatReadingTime(report.totalReadingSeconds), color: 'from-purple-500 to-indigo-500' },
-    { icon: Flame, label: '连续打卡', value: `${report.currentStreak} 天`, color: 'from-orange-500 to-red-500' },
+    { icon: TrendingUp, label: t('report.reviewCompletion'), value: `${report.reviewCompletionRate}%`, color: 'from-emerald-mastered to-teal-500' },
+    { icon: FileText, label: t('report.newCards'), value: `${report.newCardsCount}${t('report.newCardsUnit')}`, color: 'from-amber-gold to-amber-gold-light' },
+    { icon: Network, label: t('report.newLinks'), value: `${report.newLinksCount}${t('report.newLinksUnit')}`, color: 'from-blue-500 to-cyan-500' },
+    { icon: Clock, label: t('report.totalReading'), value: formatReadingTime(report.totalReadingSeconds), color: 'from-purple-500 to-indigo-500' },
+    { icon: Flame, label: t('report.currentStreak'), value: `${report.currentStreak}${t('report.currentStreakUnit')}`, color: 'from-orange-500 to-red-500' },
   ];
 
   return (
@@ -79,7 +96,7 @@ export default function WeeklyReportModal({ isOpen, onClose }: WeeklyReportModal
                     <BarChart3 className="w-5 h-5 text-amber-gold" />
                   </div>
                   <div>
-                    <h2 className="font-display text-2xl font-bold text-white">学习周报</h2>
+                    <h2 className="font-display text-2xl font-bold text-white">{t('report.title')}</h2>
                     <p className="text-xs text-white/50">{fmt(report.startDate)} — {fmt(report.endDate)}</p>
                   </div>
                 </div>
@@ -100,7 +117,7 @@ export default function WeeklyReportModal({ isOpen, onClose }: WeeklyReportModal
                       : 'bg-white/10 text-white/70 hover:bg-white/20'
                   }`}
                 >
-                  预览
+                  {t('report.preview')}
                 </button>
                 <button
                   onClick={() => setTab('markdown')}
@@ -116,7 +133,7 @@ export default function WeeklyReportModal({ isOpen, onClose }: WeeklyReportModal
 
               <div className="flex-1 overflow-y-auto min-h-0">
                 {tab === 'preview' ? (
-                  <PreviewView report={report} formatReadingTime={formatReadingTime} summaryItems={summaryItems} />
+                  <PreviewView report={report} formatReadingTime={formatReadingTime} summaryItems={summaryItems} t={t} language={language} />
                 ) : (
                   <div className="p-4 bg-white/5 rounded-xl border border-white/10">
                     <pre className="text-sm text-white/80 whitespace-pre-wrap font-mono leading-relaxed">
@@ -134,12 +151,12 @@ export default function WeeklyReportModal({ isOpen, onClose }: WeeklyReportModal
                   {copied ? (
                     <>
                       <CheckCircle2 className="w-4 h-4 text-emerald-mastered" />
-                      <span className="text-emerald-mastered">已复制</span>
+                      <span className="text-emerald-mastered">{t('report.copied')}</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-4 h-4" />
-                      复制 Markdown
+                      {t('report.copyMarkdown')}
                     </>
                   )}
                 </button>
@@ -148,7 +165,7 @@ export default function WeeklyReportModal({ isOpen, onClose }: WeeklyReportModal
                   className="flex-1 btn-primary flex items-center justify-center gap-2"
                 >
                   <Download className="w-4 h-4" />
-                  导出 .md 文件
+                  {t('report.exportMd')}
                 </button>
               </div>
             </div>
@@ -159,10 +176,12 @@ export default function WeeklyReportModal({ isOpen, onClose }: WeeklyReportModal
   );
 }
 
-function PreviewView({ report, formatReadingTime, summaryItems }: {
+function PreviewView({ report, formatReadingTime, summaryItems, t, language }: {
   report: WeeklyReport;
   formatReadingTime: (s: number) => string;
   summaryItems: { icon: React.ElementType; label: string; value: string; color: string }[];
+  t: (key: string) => string;
+  language: string;
 }) {
   return (
     <div className="space-y-5">
@@ -186,25 +205,25 @@ function PreviewView({ report, formatReadingTime, summaryItems }: {
       <div className="glass-card p-4">
         <h3 className="font-display text-lg font-bold text-white mb-3 flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-amber-gold" />
-          活跃与复习
+          {t('report.activityAndReview')}
         </h3>
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-2xl font-bold text-white">{report.activeDays}</p>
-            <p className="text-xs text-white/50">活跃天数 / 7</p>
+            <p className="text-xs text-white/50">{t('report.activeDays')}</p>
           </div>
           <div>
             <p className="text-2xl font-bold text-white">{report.totalReviews}</p>
-            <p className="text-xs text-white/50">复习次数</p>
+            <p className="text-xs text-white/50">{t('report.reviewCount')}</p>
           </div>
           <div>
             <p className="text-2xl font-bold text-white">{report.totalReviewCards}</p>
-            <p className="text-xs text-white/50">复习卡片数</p>
+            <p className="text-xs text-white/50">{t('report.reviewedCards')}</p>
           </div>
         </div>
         <div className="mt-3">
           <div className="flex items-center justify-between text-xs text-white/50 mb-1">
-            <span>复习完成率</span>
+            <span>{t('report.reviewCompletion')}</span>
             <span className="text-amber-gold">{report.reviewCompletionRate}%</span>
           </div>
           <div className="h-2 bg-white/10 rounded-full overflow-hidden">
@@ -227,7 +246,7 @@ function PreviewView({ report, formatReadingTime, summaryItems }: {
       <div className="glass-card p-4">
         <h3 className="font-display text-lg font-bold text-white mb-3 flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-amber-gold" />
-          最常访问卡片 Top {report.topVisitedCards.length}
+          {t('report.topVisited')}{report.topVisitedCards.length}
         </h3>
         {report.topVisitedCards.length > 0 ? (
           <div className="space-y-2">
@@ -245,12 +264,12 @@ function PreviewView({ report, formatReadingTime, summaryItems }: {
                   {i + 1}
                 </span>
                 <span className="flex-1 text-sm text-white truncate">{item.cardTitle}</span>
-                <span className="text-xs text-white/50">{item.visitCount}次</span>
+                <span className="text-xs text-white/50">{item.visitCount}{t('report.visitCountSuffix')}</span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-white/40 text-center py-4">暂无阅读记录</p>
+          <p className="text-sm text-white/40 text-center py-4">{t('report.noRecords')}</p>
         )}
       </div>
     </div>

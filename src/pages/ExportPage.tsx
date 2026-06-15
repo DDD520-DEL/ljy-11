@@ -10,8 +10,10 @@ import {
   Info,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useI18n } from '../i18n';
 
 export default function ExportPage() {
+  const { language, t } = useI18n();
   const { cards, links, exportToJSON, exportToMarkdown } = useStore();
   const [activeTab, setActiveTab] = useState<'json' | 'markdown'>('json');
   const [copied, setCopied] = useState(false);
@@ -67,10 +69,10 @@ export default function ExportPage() {
     >
       <motion.div variants={item}>
         <h1 className="font-display text-4xl font-bold text-white mb-2">
-          数据导出
+          {t('export.title')}
         </h1>
         <p className="text-white/60">
-          将你的知识卡片和关联关系导出为本地文件，方便备份或迁移到其他工具
+          {t('export.subtitle')}
         </p>
       </motion.div>
 
@@ -88,7 +90,7 @@ export default function ExportPage() {
               >
                 <div className="flex items-center justify-center gap-2">
                   <FileJson className="w-5 h-5" />
-                  JSON 格式
+                  {t('export.jsonTab')}
                 </div>
               </button>
               <button
@@ -101,7 +103,7 @@ export default function ExportPage() {
               >
                 <div className="flex items-center justify-center gap-2">
                   <FileText className="w-5 h-5" />
-                  Markdown 格式
+                  {t('export.mdTab')}
                 </div>
               </button>
             </div>
@@ -116,7 +118,7 @@ export default function ExportPage() {
                 <button
                   onClick={handleCopy}
                   className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-                  title="复制到剪贴板"
+                  title={t('export.copyClipboard')}
                 >
                   {copied ? (
                     <Check className="w-4 h-4 text-emerald-mastered" />
@@ -132,14 +134,14 @@ export default function ExportPage() {
               className="w-full btn-primary flex items-center justify-center gap-2 mt-4"
             >
               <FileDown className="w-5 h-5" />
-              下载 {activeTab === 'json' ? 'JSON' : 'Markdown'} 文件
+              {activeTab === 'json' ? t('export.downloadJson') : t('export.downloadMd')}
             </button>
           </div>
 
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
               <Info className="w-5 h-5 text-amber-gold" />
-              导出内容说明
+              {t('export.contentTitle')}
             </h3>
             <div className="space-y-4 text-sm text-white/70">
               <div className="flex gap-3">
@@ -147,8 +149,8 @@ export default function ExportPage() {
                   1
                 </span>
                 <div>
-                  <p className="font-medium text-white mb-1">卡片正文</p>
-                  <p>包含卡片的标题和完整内容</p>
+                  <p className="font-medium text-white mb-1">{t('export.cardBodyTitle')}</p>
+                  <p>{t('export.cardBodyDesc')}</p>
                 </div>
               </div>
               <div className="flex gap-3">
@@ -156,8 +158,8 @@ export default function ExportPage() {
                   2
                 </span>
                 <div>
-                  <p className="font-medium text-white mb-1">标签信息</p>
-                  <p>卡片的所有分类标签</p>
+                  <p className="font-medium text-white mb-1">{t('export.tagInfoTitle')}</p>
+                  <p>{t('export.tagInfoDesc')}</p>
                 </div>
               </div>
               <div className="flex gap-3">
@@ -165,8 +167,8 @@ export default function ExportPage() {
                   3
                 </span>
                 <div>
-                  <p className="font-medium text-white mb-1">时间信息</p>
-                  <p>创建时间和最后更新时间</p>
+                  <p className="font-medium text-white mb-1">{t('export.timeInfoTitle')}</p>
+                  <p>{t('export.timeInfoDesc')}</p>
                 </div>
               </div>
               <div className="flex gap-3">
@@ -174,8 +176,8 @@ export default function ExportPage() {
                   4
                 </span>
                 <div>
-                  <p className="font-medium text-white mb-1">双向链接</p>
-                  <p>该卡片与其他卡片的出链和入链关系</p>
+                  <p className="font-medium text-white mb-1">{t('export.bidirectionalLinksTitle')}</p>
+                  <p>{t('export.bidirectionalLinksDesc')}</p>
                 </div>
               </div>
             </div>
@@ -185,27 +187,27 @@ export default function ExportPage() {
         <motion.div variants={item} className="space-y-6">
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4">
-              导出统计
+              {t('export.statsTitle')}
             </h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-white/60">卡片数量</span>
+                <span className="text-white/60">{t('export.statsCardCount')}</span>
                 <span className="text-amber-gold font-medium">{cards.length}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-white/60">链接数量</span>
+                <span className="text-white/60">{t('export.statsLinkCount')}</span>
                 <span className="text-emerald-mastered font-medium">
                   {links.length}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-white/60">JSON 大小</span>
+                <span className="text-white/60">{t('export.statsJsonSize')}</span>
                 <span className="text-white font-medium">
                   {(jsonContent.length / 1024).toFixed(1)} KB
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-white/60">Markdown 大小</span>
+                <span className="text-white/60">{t('export.statsMdSize')}</span>
                 <span className="text-white font-medium">
                   {(markdownContent.length / 1024).toFixed(1)} KB
                 </span>
@@ -215,25 +217,25 @@ export default function ExportPage() {
 
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4">
-              格式对比
+              {t('export.formatCompare')}
             </h3>
             <div className="space-y-4 text-sm">
               <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                 <div className="flex items-center gap-2 mb-2">
                   <FileJson className="w-4 h-4 text-amber-gold" />
-                  <span className="font-medium text-white">JSON 格式</span>
+                  <span className="font-medium text-white">{t('export.jsonTab')}</span>
                 </div>
                 <p className="text-white/60 text-xs">
-                  适合程序处理、数据迁移和备份，包含完整的结构化数据
+                  {t('export.jsonDesc')}
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                 <div className="flex items-center gap-2 mb-2">
                   <FileText className="w-4 h-4 text-emerald-mastered" />
-                  <span className="font-medium text-white">Markdown 格式</span>
+                  <span className="font-medium text-white">{t('export.mdTab')}</span>
                 </div>
                 <p className="text-white/60 text-xs">
-                  适合人类阅读，可直接导入支持 Markdown 的笔记工具
+                  {t('export.mdDesc')}
                 </p>
               </div>
             </div>
@@ -241,20 +243,20 @@ export default function ExportPage() {
 
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4">
-              导出提示
+              {t('export.tipsTitle')}
             </h3>
             <div className="space-y-3 text-sm text-white/70">
               <div className="flex gap-3">
                 <Download className="w-4 h-4 text-amber-gold flex-shrink-0 mt-0.5" />
-                <p>建议定期导出备份，防止数据丢失</p>
+                <p>{t('export.tip1')}</p>
               </div>
               <div className="flex gap-3">
                 <Download className="w-4 h-4 text-amber-gold flex-shrink-0 mt-0.5" />
-                <p>JSON 文件可用于后续导入恢复</p>
+                <p>{t('export.tip2')}</p>
               </div>
               <div className="flex gap-3">
                 <Download className="w-4 h-4 text-amber-gold flex-shrink-0 mt-0.5" />
-                <p>Markdown 兼容 Obsidian、Logseq 等工具</p>
+                <p>{t('export.tip3')}</p>
               </div>
             </div>
           </div>

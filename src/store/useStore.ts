@@ -120,7 +120,7 @@ interface StoreState {
   checkAchievements: () => Promise<Achievement[]>;
   clearNewAchievements: () => void;
   getWeeklyReport: () => WeeklyReport;
-  getWeeklyReportMarkdown: () => string;
+  getWeeklyReportMarkdown: (t: (key: string) => string, language: string) => string;
 
   createTemplate: (template: Partial<CardTemplate>) => Promise<CardTemplate>;
   updateTemplate: (id: string, updates: Partial<CardTemplate>) => Promise<void>;
@@ -1398,10 +1398,10 @@ export const useStore = create<StoreState>((set, get) => ({
     return generateWeeklyReport(cards, links, readingRecords, reviewHistories);
   },
 
-  getWeeklyReportMarkdown: () => {
+  getWeeklyReportMarkdown: (t, language) => {
     const { cards, links, readingRecords, reviewHistories } = get();
     const report = generateWeeklyReport(cards, links, readingRecords, reviewHistories);
-    return formatWeeklyReportMarkdown(report);
+    return formatWeeklyReportMarkdown(report, t, language);
   },
 
   createTemplate: async (partialTemplate) => {

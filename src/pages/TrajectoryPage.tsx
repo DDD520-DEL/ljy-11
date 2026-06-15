@@ -15,13 +15,16 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { format, formatDistanceToNow, subDays } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { zhCN, enUS } from 'date-fns/locale';
 import { getLearningDays, getActiveDays } from '../utils/algorithm';
 import WeeklyReportModal from '../components/WeeklyReportModal';
+import { useI18n } from '../i18n';
 
 export default function TrajectoryPage() {
   const navigate = useNavigate();
   const { readingRecords, cards, getReadingHeatmap, reviewHistories, getStreakInfo } = useStore();
+  const { language, t } = useI18n();
+  const dateLocale = language === 'zh-CN' ? zhCN : enUS;
   const [timeRange, setTimeRange] = useState<'7' | '30' | '90'>('30');
   const [showWeeklyReport, setShowWeeklyReport] = useState(false);
 
@@ -38,7 +41,7 @@ export default function TrajectoryPage() {
   const activeDaysInRange = useMemo(() => {
     const days = parseInt(timeRange);
     const cutoff = subDays(new Date(), days - 1);
-    const cutoffStr = format(cutoff, 'yyyy-MM-dd');
+    const cutoffStr = format(cutoff, 'yyyy-MM-dd', { locale: dateLocale });
     let count = 0;
     activeDays.forEach((date) => {
       if (date >= cutoffStr) {
@@ -46,7 +49,7 @@ export default function TrajectoryPage() {
       }
     });
     return count;
-  }, [activeDays, timeRange]);
+  }, [activeDays, timeRange, dateLocale]);
 
   const filteredRecords = useMemo(() => {
     const days = parseInt(timeRange);
@@ -57,7 +60,7 @@ export default function TrajectoryPage() {
   const dailyStats = useMemo(() => {
     const stats = new Map<string, { count: number; duration: number }>();
     filteredRecords.forEach((record) => {
-      const date = format(new Date(record.startTime), 'yyyy-MM-dd');
+      const date = format(new Date(record.startTime), 'yyyy-MM-dd', { locale: dateLocale });
       const current = stats.get(date) || { count: 0, duration: 0 };
       stats.set(date, {
         count: current.count + 1,
@@ -65,7 +68,7 @@ export default function TrajectoryPage() {
       });
     });
     return stats;
-  }, [filteredRecords]);
+  }, [filteredRecords, dateLocale]);
 
   const totalDuration = filteredRecords.reduce((sum, r) => sum + r.duration, 0);
   const avgDuration =
@@ -123,20 +126,20 @@ export default function TrajectoryPage() {
       <motion.div variants={item} className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-4xl font-bold text-white mb-2">
-            阅读轨迹
+            {t('trajectory.title')}
           </h1>
           <p className="text-white/60">
-            记录和可视化你的知识探索路径
+            {t('trajectory.subtitle')}
           </p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setShowWeeklyReport(true)}
             className="px-4 py-2 rounded-xl text-sm font-medium transition-all bg-white/10 text-white/70 hover:bg-white/20 flex items-center gap-2"
-            title="生成周报"
+            title={t('dashboard.generateWeeklyReport')}
           >
             <Download className="w-4 h-4" />
-            生成周报
+            {t('dashboard.generateWeeklyReport')}
           </button>
           {(['7', '30', '90'] as const).map((range) => (
             <button
@@ -148,7 +151,7 @@ export default function TrajectoryPage() {
                   : 'bg-white/10 text-white/70 hover:bg-white/20'
               }`}
             >
-              {range}天
+              {t(`trajectory.${range}days`)}
             </button>
           ))}
         </div>
@@ -167,7 +170,7 @@ export default function TrajectoryPage() {
           <p className="text-3xl font-bold text-white mb-1">
             {Math.floor(totalDuration / 60)}
           </p>
-          <p className="text-sm text-white/50">总阅读时长 (分钟)</p>
+          <p className="text-sm text-white/50">{t('trajectory.totalReadingTime')}</p>
         </div>
 
         <div className="stat-card">
@@ -179,7 +182,7 @@ export default function TrajectoryPage() {
           <p className="text-3xl font-bold text-white mb-1">
             {streakInfo.currentStreak}
           </p>
-          <p className="text-sm text-white/50">连续打卡 (天)</p>
+          <p className="text-sm text-white/50">{t('trajectory.currentStreak')}</p>
         </div>
 
         <div className="stat-card">
@@ -189,7 +192,7 @@ export default function TrajectoryPage() {
             </div>
           </div>
           <p className="text-3xl font-bold text-white mb-1">{activeDays.size}</p>
-          <p className="text-sm text-white/50">活跃天数</p>
+          <p className="text-sm text-white/50">{t('trajectory.activeDays')}</p>
         </div>
 
         <div className="stat-card">
@@ -201,7 +204,7 @@ export default function TrajectoryPage() {
           <p className="text-3xl font-bold text-white mb-1">
             {mostVisitedCards.length}
           </p>
-          <p className="text-sm text-white/50">访问卡片数</p>
+          <p className="text-sm text-white/50">{t('trajectory.visitedCards')}</p>
         </div>
       </motion.div>
 
@@ -209,23 +212,23 @@ export default function TrajectoryPage() {
         <motion.div variants={item} className="lg:col-span-2 glass-card p-6">
           <h3 className="font-display text-lg font-bold text-white mb-6 flex items-center gap-2">
             <Calendar className="w-5 h-5 text-amber-gold" />
-            打卡热力图
+            {t('trajectory.heatmap')}
           </h3>
           <div className="overflow-x-auto">
             <div className="grid grid-cols-[auto_repeat(53,1fr)] gap-1 min-w-[600px]">
               <div className="w-8" />
-              {['一', '三', '五', '日'].map((day, i) => (
+              {['weekMon', 'weekWed', 'weekFri', 'weekSun'].map((weekKey, i) => (
                 <div
-                  key={day}
+                  key={weekKey}
                   className="text-xs text-white/40 text-center"
                   style={{ gridRow: i * 2 + 1 }}
                 >
-                  {day}
+                  {t(`trajectory.${weekKey}`)}
                 </div>
               ))}
               {Array.from({ length: parseInt(timeRange) }).map((_, i) => {
                 const date = subDays(new Date(), parseInt(timeRange) - 1 - i);
-                const dateStr = format(date, 'yyyy-MM-dd');
+                const dateStr = format(date, 'yyyy-MM-dd', { locale: dateLocale });
                 const dayData = learningDays.get(dateStr);
                 const isActive = activeDays.has(dateStr);
                 const minutes = dayData ? Math.floor(dayData.duration / 60) : 0;
@@ -234,7 +237,7 @@ export default function TrajectoryPage() {
                 const intensity = Math.min(minutes / 60, 1);
                 const isFirstOfMonth = date.getDate() === 1;
                 const weekStart = date.getDay() === 0;
-                const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
+                const isToday = dateStr === format(new Date(), 'yyyy-MM-dd', { locale: dateLocale });
                 
                 let bgColor = 'rgba(255, 255, 255, 0.05)';
                 let borderColor = 'transparent';
@@ -253,11 +256,15 @@ export default function TrajectoryPage() {
                   borderColor = 'rgba(245, 158, 11, 1)';
                 }
                 
+                const monthStr = language === 'zh-CN' 
+                  ? format(date, 'M月', { locale: dateLocale })
+                  : format(date, 'MMM', { locale: dateLocale });
+                
                 return (
                   <div key={i} className="relative">
                     {isFirstOfMonth && (
                       <span className="absolute -top-5 text-xs text-white/40">
-                        {format(date, 'M月')}
+                        {monthStr}
                       </span>
                     )}
                     <div
@@ -284,20 +291,20 @@ export default function TrajectoryPage() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-sm bg-white/10" />
-                  <span>未打卡</span>
+                  <span>{t('trajectory.notCheckedIn')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-sm bg-amber-gold/30" />
-                  <span>已打卡</span>
+                  <span>{t('trajectory.checkedIn')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-sm bg-amber-gold" />
-                  <span>深度学习</span>
+                  <span>{t('trajectory.deepLearning')}</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <span>
-                  打卡率: {Math.round((activeDaysInRange / parseInt(timeRange)) * 100)}%
+                  {t('trajectory.checkInRate')}{Math.round((activeDaysInRange / parseInt(timeRange)) * 100)}%
                 </span>
               </div>
             </div>
@@ -308,7 +315,7 @@ export default function TrajectoryPage() {
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-amber-gold" />
-              每日阅读时长
+              {t('trajectory.dailyReadingTime')}
             </h3>
             <div className="space-y-2">
               {Array.from(dailyStats.entries())
@@ -317,7 +324,7 @@ export default function TrajectoryPage() {
                 .map(([date, stats]) => (
                   <div key={date} className="flex items-center gap-3">
                     <span className="text-xs text-white/40 w-16">
-                      {format(new Date(date), 'MM-dd')}
+                      {format(new Date(date), 'MM-dd', { locale: dateLocale })}
                     </span>
                     <div className="flex-1 h-6 bg-white/10 rounded-full overflow-hidden">
                       <div
@@ -337,7 +344,7 @@ export default function TrajectoryPage() {
 
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4">
-              最常访问
+              {t('trajectory.mostVisited')}
             </h3>
             <div className="space-y-3">
               {mostVisitedCards.map((item, index) => (
@@ -363,13 +370,13 @@ export default function TrajectoryPage() {
                     </p>
                   </div>
                   <span className="text-xs text-white/50">
-                    {item.visits}次
+                    {item.visits}{t('trajectory.visitCountSuffix')}
                   </span>
                 </div>
               ))}
               {mostVisitedCards.length === 0 && (
                 <p className="text-sm text-white/40 text-center py-4">
-                  暂无阅读记录
+                  {t('trajectory.noRecords')}
                 </p>
               )}
             </div>
@@ -380,7 +387,7 @@ export default function TrajectoryPage() {
       <motion.div variants={item} className="glass-card p-6">
         <h3 className="font-display text-lg font-bold text-white mb-6 flex items-center gap-2">
           <ArrowRight className="w-5 h-5 text-amber-gold" />
-          阅读时间线
+          {t('trajectory.timeline')}
         </h3>
         <div className="relative">
           <div className="absolute left-4 top-0 bottom-0 w-px bg-gradient-to-b from-amber-gold via-amber-gold/50 to-transparent" />
@@ -406,27 +413,27 @@ export default function TrajectoryPage() {
                       <div>
                         {fromCard && (
                           <p className="text-xs text-white/50 mb-1">
-                            从「{fromCard.title}」跳转而来
+                            {t('trajectory.fromCardPrefix')}{fromCard.title}{t('trajectory.fromCardSuffix')}
                           </p>
                         )}
                         <h4
                           onClick={() => navigate(`/cards/${record.cardId}`)}
                           className="font-medium text-white hover:text-amber-gold cursor-pointer transition-colors"
                         >
-                          {card?.title || '未知卡片'}
+                          {card?.title || t('trajectory.unknownCard')}
                         </h4>
                       </div>
                       <span className="text-xs text-white/40">
                         {formatDistanceToNow(new Date(record.startTime), {
                           addSuffix: true,
-                          locale: zhCN,
+                          locale: dateLocale,
                         })}
                       </span>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-white/50">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {record.duration}秒
+                        {record.duration}{t('trajectory.secondUnit')}
                       </span>
                     </div>
                   </div>
@@ -435,7 +442,7 @@ export default function TrajectoryPage() {
             })}
             {readingPath.length === 0 && (
               <p className="text-sm text-white/40 text-center py-8 pl-12">
-                开始浏览知识卡片，你的阅读轨迹将在这里呈现
+                {t('trajectory.emptyTimeline')}
               </p>
             )}
           </div>

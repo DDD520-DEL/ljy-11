@@ -18,8 +18,10 @@ import {
 import { useStore } from '../store/useStore';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { useI18n } from '../i18n';
 
 export default function TagsPage() {
+  const { language, t } = useI18n();
   const navigate = useNavigate();
   const { cards, getTagStats, renameTag, deleteTag, mergeTags, setSelectedTags } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -129,29 +131,29 @@ export default function TagsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-4xl font-bold text-white mb-2">
-            标签管理
+            {t('tags.title')}
           </h1>
           <p className="text-white/60">
-            共 {uniqueTagCount} 个标签，关联 {totalCards} 张卡片
+            {t('tags.subtitlePrefix')} {uniqueTagCount} {t('tags.subtitleMid')} {totalCards} {t('tags.subtitleSuffix')}
           </p>
         </div>
         {selectedTags.length > 0 && (
           <div className="flex items-center gap-3">
             <span className="text-sm text-white/60">
-              已选择 {selectedTags.length} 个标签
+              {t('tags.selectedPrefix')} {selectedTags.length} {t('tags.selectedSuffix')}
             </span>
             <button
               onClick={() => setShowMergeModal(true)}
               className="btn-secondary flex items-center gap-2"
             >
               <Merge className="w-4 h-4" />
-              合并标签
+              {t('tags.mergeTags')}
             </button>
             <button
               onClick={() => setSelectedTagsLocal([])}
               className="text-sm text-white/50 hover:text-white transition-colors"
             >
-              取消选择
+              {t('tags.cancelSelection')}
             </button>
           </div>
         )}
@@ -165,7 +167,7 @@ export default function TagsPage() {
             </div>
           </div>
           <p className="text-2xl font-bold text-white mb-1">{uniqueTagCount}</p>
-          <p className="text-sm text-white/50">标签总数</p>
+          <p className="text-sm text-white/50">{t('tags.statsTotal')}</p>
         </div>
         <div className="stat-card">
           <div className="flex items-start justify-between mb-3">
@@ -174,7 +176,7 @@ export default function TagsPage() {
             </div>
           </div>
           <p className="text-2xl font-bold text-white mb-1">{totalCards}</p>
-          <p className="text-sm text-white/50">关联卡片</p>
+          <p className="text-sm text-white/50">{t('tags.statsLinked')}</p>
         </div>
         <div className="stat-card">
           <div className="flex items-start justify-between mb-3">
@@ -185,7 +187,7 @@ export default function TagsPage() {
           <p className="text-2xl font-bold text-white mb-1">
             {selectedTags.length}
           </p>
-          <p className="text-sm text-white/50">已选择</p>
+          <p className="text-sm text-white/50">{t('tags.statsSelected')}</p>
         </div>
       </div>
 
@@ -195,7 +197,7 @@ export default function TagsPage() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
             <input
               type="text"
-              placeholder="搜索标签..."
+              placeholder={t('tags.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="input-field pl-12"
@@ -206,9 +208,9 @@ export default function TagsPage() {
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
             className="input-field w-auto"
           >
-            <option value="count">按数量排序</option>
-            <option value="name">按名称排序</option>
-            <option value="recent">最近使用</option>
+            <option value="count">{t('tags.sortByCount')}</option>
+            <option value="name">{t('tags.sortByName')}</option>
+            <option value="recent">{t('tags.sortByRecent')}</option>
           </select>
           {filteredTags.length > 0 && (
             <button
@@ -216,8 +218,8 @@ export default function TagsPage() {
               className="btn-secondary text-sm"
             >
               {selectedTags.length === filteredTags.length
-                ? '取消全选'
-                : '全选'}
+                ? t('tags.deselectAll')
+                : t('tags.selectAll')}
             </button>
           )}
         </div>
@@ -286,10 +288,10 @@ export default function TagsPage() {
                   <div className="flex items-center gap-4 mt-1 text-sm text-white/50">
                     <span className="flex items-center gap-1">
                       <FileText className="w-3.5 h-3.5" />
-                      {tag.cardCount} 张卡片
+                      {tag.cardCount} {t('tags.cardCountSuffix')}
                     </span>
                     <span>
-                      最近使用:{' '}
+                      {t('tags.recentUsedPrefix')}
                       {formatDistanceToNow(tag.lastUsedAt, {
                         addSuffix: true,
                         locale: zhCN,
@@ -302,21 +304,21 @@ export default function TagsPage() {
                   <button
                     onClick={() => filterByTag(tag.name)}
                     className="p-2 rounded-lg bg-white/5 text-white/60 hover:bg-amber-gold/20 hover:text-amber-gold transition-colors"
-                    title="查看相关卡片"
+                    title={t('tags.viewCardsTitle')}
                   >
                     <ArrowRight className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => startEditing(tag.name)}
                     className="p-2 rounded-lg bg-white/5 text-white/60 hover:bg-blue-500/20 hover:text-blue-400 transition-colors"
-                    title="重命名"
+                    title={t('tags.renameTitle')}
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setDeleteConfirm(tag.name)}
                     className="p-2 rounded-lg bg-white/5 text-white/60 hover:bg-rose-review/20 hover:text-rose-review transition-colors"
-                    title="删除标签"
+                    title={t('tags.deleteTitle')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -325,7 +327,7 @@ export default function TagsPage() {
                       setExpandedTag(expandedTag === tag.name ? null : tag.name)
                     }
                     className="p-2 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 transition-colors"
-                    title={expandedTag === tag.name ? '收起' : '展开卡片'}
+                    title={expandedTag === tag.name ? t('tags.collapseTitle') : t('tags.expandCardsTitle')}
                   >
                     {expandedTag === tag.name ? (
                       <ChevronUp className="w-4 h-4" />
@@ -346,7 +348,7 @@ export default function TagsPage() {
                   >
                     <div className="p-4 bg-white/[0.02]">
                       <h4 className="text-sm font-medium text-white/70 mb-3">
-                        相关卡片 ({tag.cards.length})
+                        {t('tags.relatedCardsPrefix')}{tag.cards.length}{t('tags.relatedCardsSuffix')}
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {tag.cards.slice(0, 6).map((card) => (
@@ -371,7 +373,7 @@ export default function TagsPage() {
                             onClick={() => filterByTag(tag.name)}
                             className="p-3 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-amber-gold text-center transition-colors"
                           >
-                            查看全部 {tag.cards.length} 张卡片
+                            {t('tags.viewAllPrefix')} {tag.cards.length} {t('tags.viewAllSuffix')}
                           </button>
                         )}
                       </div>
@@ -386,23 +388,23 @@ export default function TagsPage() {
                     <AlertCircle className="w-5 h-5 text-rose-review flex-shrink-0" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-white">
-                        确定要删除标签「{tag.name}」吗？
+                        {t('tags.deleteConfirmPrefix')}{tag.name}{t('tags.deleteConfirmSuffix')}
                       </p>
                       <p className="text-xs text-white/50">
-                        此操作将从 {tag.cardCount} 张卡片中移除该标签，不会删除卡片本身。
+                        {t('tags.deleteConfirmDescPrefix')} {tag.cardCount} {t('tags.deleteConfirmDescMid')}
                       </p>
                     </div>
                     <button
                       onClick={() => handleDelete(tag.name)}
                       className="px-4 py-2 bg-rose-review text-white rounded-lg text-sm font-medium hover:bg-rose-review/80 transition-colors"
                     >
-                      确认删除
+                      {t('tags.confirmDelete')}
                     </button>
                     <button
                       onClick={() => setDeleteConfirm(null)}
                       className="px-4 py-2 bg-white/10 text-white/70 rounded-lg text-sm font-medium hover:bg-white/20 transition-colors"
                     >
-                      取消
+                      {t('tags.cancel')}
                     </button>
                   </div>
                 </div>
@@ -422,10 +424,10 @@ export default function TagsPage() {
             <Tag className="w-10 h-10 text-white/20" />
           </div>
           <h3 className="font-display text-xl font-bold text-white mb-2">
-            没有找到标签
+            {t('tags.emptyTitle')}
           </h3>
           <p className="text-white/50">
-            {searchQuery ? '尝试调整搜索条件' : '在卡片中添加标签后会在这里显示'}
+            {searchQuery ? t('tags.emptyDescSearch') : t('tags.emptyDescNoSearch')}
           </p>
         </motion.div>
       )}
@@ -447,14 +449,14 @@ export default function TagsPage() {
               className="glass-card p-6 w-full max-w-md"
             >
               <h3 className="font-display text-xl font-bold text-white mb-2">
-                合并标签
+                {t('tags.mergeModalTitle')}
               </h3>
               <p className="text-sm text-white/60 mb-4">
-                将 {selectedTags.length} 个标签合并为一个新标签
+                {t('tags.mergeModalDescPrefix')} {selectedTags.length} {t('tags.mergeModalDescSuffix')}
               </p>
 
               <div className="mb-4">
-                <p className="text-sm text-white/70 mb-2">要合并的标签：</p>
+                <p className="text-sm text-white/70 mb-2">{t('tags.tagsToMerge')}</p>
                 <div className="flex flex-wrap gap-2 p-3 bg-white/5 rounded-lg">
                   {selectedTags.map((tag) => (
                     <span
@@ -469,17 +471,17 @@ export default function TagsPage() {
 
               <div className="mb-6">
                 <label className="block text-sm text-white/70 mb-2">
-                  目标标签名称
+                  {t('tags.targetTagName')}
                 </label>
                 <input
                   type="text"
                   value={mergeTarget}
                   onChange={(e) => setMergeTarget(e.target.value)}
-                  placeholder="输入新的标签名称..."
+                  placeholder={t('tags.targetTagPlaceholder')}
                   className="input-field w-full"
                 />
                 <p className="text-xs text-white/40 mt-2">
-                  所有选中标签将被替换为这个新标签
+                  {t('tags.mergeNote')}
                 </p>
               </div>
 
@@ -491,14 +493,14 @@ export default function TagsPage() {
                   }}
                   className="flex-1 btn-secondary"
                 >
-                  取消
+                  {t('tags.mergeCancel')}
                 </button>
                 <button
                   onClick={handleMerge}
                   disabled={!mergeTarget.trim()}
                   className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  确认合并
+                  {t('tags.confirmMerge')}
                 </button>
               </div>
             </motion.div>

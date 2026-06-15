@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   Bold,
   Italic,
@@ -13,6 +14,7 @@ import {
   Edit3,
   Columns,
 } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 export type ViewMode = 'edit' | 'preview' | 'split';
 
@@ -36,26 +38,28 @@ export type MarkdownAction =
   | 'codeblock';
 
 export function MarkdownToolbar({ onInsert, viewMode, onViewModeChange }: MarkdownToolbarProps) {
+  const { language, t } = useI18n();
+
   const handleLink = () => {
-    const url = prompt('请输入链接地址:', 'https://');
+    const url = prompt(t('toolbar.linkPrompt'), 'https://');
     if (url) {
       onInsert('link', { url });
     }
   };
 
-  const toolbarButtons = [
-    { action: 'bold' as const, icon: Bold, label: '加粗 (Ctrl+B)' },
-    { action: 'italic' as const, icon: Italic, label: '斜体 (Ctrl+I)' },
-    { action: 'h1' as const, icon: Heading1, label: '一级标题' },
-    { action: 'h2' as const, icon: Heading2, label: '二级标题' },
-    { action: 'h3' as const, icon: Heading3, label: '三级标题' },
-    { action: 'ul' as const, icon: List, label: '无序列表' },
-    { action: 'ol' as const, icon: ListOrdered, label: '有序列表' },
-    { action: 'quote' as const, icon: Quote, label: '引用' },
-    { action: 'link' as const, icon: Link, label: '链接', onClick: handleLink },
-    { action: 'code' as const, icon: Code, label: '行内代码' },
-    { action: 'codeblock' as const, icon: Code, label: '代码块', variant: 'block' as const },
-  ];
+  const toolbarButtons = useMemo(() => [
+    { action: 'bold' as const, icon: Bold, label: t('toolbar.bold') },
+    { action: 'italic' as const, icon: Italic, label: t('toolbar.italic') },
+    { action: 'h1' as const, icon: Heading1, label: t('toolbar.h1') },
+    { action: 'h2' as const, icon: Heading2, label: t('toolbar.h2') },
+    { action: 'h3' as const, icon: Heading3, label: t('toolbar.h3') },
+    { action: 'ul' as const, icon: List, label: t('toolbar.ul') },
+    { action: 'ol' as const, icon: ListOrdered, label: t('toolbar.ol') },
+    { action: 'quote' as const, icon: Quote, label: t('toolbar.quote') },
+    { action: 'link' as const, icon: Link, label: t('toolbar.link'), onClick: handleLink },
+    { action: 'code' as const, icon: Code, label: t('toolbar.inlineCode') },
+    { action: 'codeblock' as const, icon: Code, label: t('toolbar.codeBlock'), variant: 'block' as const },
+  ], [t]);
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-white/10 bg-white/[0.02]">
@@ -89,10 +93,10 @@ export function MarkdownToolbar({ onInsert, viewMode, onViewModeChange }: Markdo
               ? 'bg-white/15 text-white'
               : 'text-white/60 hover:text-white hover:bg-white/10'
           }`}
-          title="仅编辑"
+          title={t('toolbar.editOnly')}
         >
           <Edit3 className="w-3.5 h-3.5" />
-          编辑
+          {t('toolbar.edit')}
         </button>
         <button
           type="button"
@@ -102,10 +106,10 @@ export function MarkdownToolbar({ onInsert, viewMode, onViewModeChange }: Markdo
               ? 'bg-white/15 text-white'
               : 'text-white/60 hover:text-white hover:bg-white/10'
           }`}
-          title="左右分栏"
+          title={t('toolbar.splitView')}
         >
           <Columns className="w-3.5 h-3.5" />
-          分栏
+          {t('toolbar.split')}
         </button>
         <button
           type="button"
@@ -115,10 +119,10 @@ export function MarkdownToolbar({ onInsert, viewMode, onViewModeChange }: Markdo
               ? 'bg-white/15 text-white'
               : 'text-white/60 hover:text-white hover:bg-white/10'
           }`}
-          title="仅预览"
+          title={t('toolbar.previewOnly')}
         >
           <Eye className="w-3.5 h-3.5" />
-          预览
+          {t('toolbar.preview')}
         </button>
       </div>
     </div>

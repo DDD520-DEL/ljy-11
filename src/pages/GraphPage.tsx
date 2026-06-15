@@ -17,8 +17,10 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { GraphData, GraphNode } from '../types';
+import { useI18n } from '../i18n';
 
 export default function GraphPage() {
+  const { language, t } = useI18n();
   const navigate = useNavigate();
   const graphRef = useRef<ForceGraphMethods>();
   const { getGraphData, cards, activeSpaceId, knowledgeSpaces, settings, getDefaultSettings } = useStore();
@@ -270,10 +272,10 @@ export default function GraphPage() {
       <motion.div variants={item} className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-4xl font-bold text-white mb-2">
-            知识图谱
+            {t('graph.title')}
           </h1>
           <p className="text-white/60">
-            可视化展示知识节点间的关联网络
+            {t('graph.subtitle2')}
             {activeSpaceId && knowledgeSpaces.find((s) => s.id === activeSpaceId) && (
               <span className="ml-2 text-amber-gold">
                 · {knowledgeSpaces.find((s) => s.id === activeSpaceId)!.icon} {knowledgeSpaces.find((s) => s.id === activeSpaceId)!.name}
@@ -285,21 +287,21 @@ export default function GraphPage() {
           <button
             onClick={handleZoomIn}
             className="p-3 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-colors"
-            title="放大"
+            title={t('graph.zoomIn')}
           >
             <ZoomIn className="w-5 h-5" />
           </button>
           <button
             onClick={handleZoomOut}
             className="p-3 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-colors"
-            title="缩小"
+            title={t('graph.zoomOut')}
           >
             <ZoomOut className="w-5 h-5" />
           </button>
           <button
             onClick={handleResetView}
             className="p-3 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-colors"
-            title="重置视图"
+            title={t('graph.resetView')}
           >
             <Maximize2 className="w-5 h-5" />
           </button>
@@ -391,7 +393,7 @@ export default function GraphPage() {
                 {focusedNodeId && (
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-gold/20 border border-amber-gold/40 text-amber-gold text-xs">
                     <Crosshair className="w-3.5 h-3.5" />
-                    <span>聚焦: {focusedNode?.name || focusedNodeId}</span>
+                    <span>{t('graph.focusing')} {focusedNode?.name || focusedNodeId}</span>
                     <button
                       onClick={exitFocusMode}
                       className="hover:text-white transition-colors"
@@ -426,15 +428,15 @@ export default function GraphPage() {
             <div className="absolute bottom-4 left-4 flex flex-wrap gap-3 text-xs text-white/60">
               <div className="flex items-center gap-2">
                 <Network className="w-4 h-4" />
-                <span>{filteredGraphData.nodes.length} 节点</span>
+                <span>{filteredGraphData.nodes.length} {t('graph.nodeCount')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Link className="w-4 h-4" />
-                <span>{filteredGraphData.links.length} 关联</span>
+                <span>{filteredGraphData.links.length} {t('graph.linkCount')}</span>
               </div>
               {(selectedFilterTags.length > 0 || focusedNodeId) && (
                 <span className="text-white/40">
-                  (共 {fullGraphData.nodes.length} 节点)
+                  {t('graph.totalNodesPrefix')} {fullGraphData.nodes.length} {t('graph.totalNodesSuffix')}
                 </span>
               )}
             </div>
@@ -443,9 +445,9 @@ export default function GraphPage() {
               <div className="absolute top-4 left-4 glass-card p-3 animate-fade-in">
                 <p className="font-medium text-white">{hoveredNode.name}</p>
                 <p className="text-xs text-white/60">
-                  {hoveredNode.linkCount} 个关联
+                  {hoveredNode.linkCount} {t('graph.linkCountSuffix')}
                 </p>
-                <p className="text-xs text-white/40 mt-1">双击聚焦节点</p>
+                <p className="text-xs text-white/40 mt-1">{t('graph.doubleClickTip')}</p>
               </div>
             )}
           </div>
@@ -455,7 +457,7 @@ export default function GraphPage() {
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
               <Filter className="w-5 h-5 text-amber-gold" />
-              标签筛选
+              {t('graph.tagFilter')}
             </h3>
             <div className="flex flex-wrap gap-2">
               {allTags.map((tag) => {
@@ -494,7 +496,7 @@ export default function GraphPage() {
                 onClick={clearFilterTags}
                 className="mt-3 w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/60 text-xs hover:bg-white/10 hover:text-white transition-all duration-200"
               >
-                清除筛选
+                {t('graph.clearFilter')}
               </button>
             )}
           </div>
@@ -502,7 +504,7 @@ export default function GraphPage() {
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
               <Info className="w-5 h-5 text-amber-gold" />
-              节点信息
+              {t('graph.nodeInfo')}
             </h3>
             {selectedNode ? (
               <div className="space-y-4">
@@ -528,13 +530,13 @@ export default function GraphPage() {
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-white/60">关联数量</span>
+                    <span className="text-white/60">{t('graph.linkCount')}</span>
                     <span className="text-white font-medium">
                       {selectedNode.linkCount}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-white/60">复习优先级</span>
+                    <span className="text-white/60">{t('graph.reviewPriority')}</span>
                     <span
                       className={`font-medium ${
                         selectedNode.reviewPriority > 2
@@ -550,15 +552,15 @@ export default function GraphPage() {
                   {selectedCard && (
                     <>
                       <div className="flex justify-between">
-                        <span className="text-white/60">复习次数</span>
+                        <span className="text-white/60">{t('graph.reviewCount')}</span>
                         <span className="text-white font-medium">
                           {selectedCard.reviewCount}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-white/60">复习间隔</span>
+                        <span className="text-white/60">{t('graph.reviewInterval')}</span>
                         <span className="text-white font-medium">
-                          {selectedCard.reviewInterval} 天
+                          {selectedCard.reviewInterval} {t('graph.days')}
                         </span>
                       </div>
                     </>
@@ -570,11 +572,11 @@ export default function GraphPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <Sparkles className="w-4 h-4 text-rose-review-light" />
                       <span className="text-sm font-medium text-rose-review-light">
-                        建议复习
+                        {t('graph.suggestReview')}
                       </span>
                     </div>
                     <p className="text-xs text-white/60">
-                      该节点关联度高，建议优先复习巩固
+                      {t('graph.suggestReviewDesc')}
                     </p>
                   </div>
                 )}
@@ -585,7 +587,7 @@ export default function GraphPage() {
                     className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white/80 text-sm font-medium hover:bg-white/15 hover:text-white transition-all duration-200 flex items-center justify-center gap-2"
                   >
                     <Crosshair className="w-4 h-4" />
-                    聚焦此节点
+                    {t('graph.focus')}
                   </button>
                 )}
 
@@ -595,7 +597,7 @@ export default function GraphPage() {
                     className="w-full px-4 py-2.5 rounded-xl bg-amber-gold/10 border border-amber-gold/30 text-amber-gold text-sm font-medium hover:bg-amber-gold/20 transition-all duration-200 flex items-center justify-center gap-2"
                   >
                     <X className="w-4 h-4" />
-                    退出聚焦
+                    {t('graph.exitFocus')}
                   </button>
                 )}
 
@@ -603,7 +605,7 @@ export default function GraphPage() {
                   onClick={handleNavigateToCard}
                   className="w-full btn-primary"
                 >
-                  查看卡片详情
+                  {t('graph.viewCardDetail')}
                 </button>
               </div>
             ) : (
@@ -611,15 +613,15 @@ export default function GraphPage() {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/5 flex items-center justify-center">
                   <Network className="w-8 h-8 text-white/20" />
                 </div>
-                <p className="text-white/60 text-sm">点击图谱节点查看详情</p>
-                <p className="text-white/40 text-xs mt-1">双击节点进入聚焦模式</p>
+                <p className="text-white/60 text-sm">{t('graph.emptyTip1')}</p>
+                <p className="text-white/40 text-xs mt-1">{t('graph.emptyTip2')}</p>
               </div>
             )}
           </div>
 
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4">
-              图例
+              {t('graph.legend')}
             </h3>
             <div className="space-y-2">
               {Array.from(
@@ -637,7 +639,7 @@ export default function GraphPage() {
                       style={{ backgroundColor: color }}
                     />
                     <span className="text-sm text-white/70">
-                      {sampleCard?.tags[0] || '其他'}
+                      {sampleCard?.tags[0] || t('graph.other')}
                     </span>
                     <span className="text-xs text-white/40 ml-auto">
                       {nodesWithColor.length}

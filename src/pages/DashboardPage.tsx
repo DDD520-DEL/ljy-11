@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { formatDistanceToNow, format } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { zhCN, enUS } from 'date-fns/locale';
 import {
   getReviewStatsByDay,
   getConsecutiveDaysWithoutReview,
@@ -43,26 +43,10 @@ import { useNotification } from '../hooks/useNotification';
 import { AchievementType, TimeRange } from '../types';
 import WeeklyReportModal from '../components/WeeklyReportModal';
 import DailyDiscovery from '../components/DailyDiscovery';
-
-const TIME_RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
-  { value: 'week', label: '本周' },
-  { value: 'month', label: '本月' },
-  { value: 'last30', label: '近30天' },
-];
-
-const TIME_RANGE_PERIOD_LABELS: Record<TimeRange, string> = {
-  week: '较上周',
-  month: '较上月',
-  last30: '较前30天',
-};
-
-const TIME_RANGE_TREND_LABELS: Record<TimeRange, string> = {
-  week: '最近 7 天',
-  month: '本月',
-  last30: '最近 30 天',
-};
+import { useI18n } from '../i18n';
 
 export default function DashboardPage() {
+  const { language, t } = useI18n();
   const navigate = useNavigate();
   const { 
     cards, 
@@ -89,6 +73,44 @@ export default function DashboardPage() {
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showWeeklyReport, setShowWeeklyReport] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>('week');
+
+  const getAchievementName = (type: string): string => {
+    switch (type) {
+      case 'streak_7': return t('achievement.streak7Name');
+      case 'streak_30': return t('achievement.streak30Name');
+      case 'streak_100': return t('achievement.streak100Name');
+      default: return '';
+    }
+  };
+
+  const getAchievementDesc = (type: string): string => {
+    switch (type) {
+      case 'streak_7': return t('achievement.streak7Desc');
+      case 'streak_30': return t('achievement.streak30Desc');
+      case 'streak_100': return t('achievement.streak100Desc');
+      default: return '';
+    }
+  };
+
+  const dateLocale = language === 'zh-CN' ? zhCN : enUS;
+
+  const TIME_RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
+    { value: 'week', label: t('dashboard.thisWeek') },
+    { value: 'month', label: t('dashboard.thisMonth') },
+    { value: 'last30', label: t('dashboard.last30Days') },
+  ];
+
+  const TIME_RANGE_PERIOD_LABELS: Record<TimeRange, string> = {
+    week: t('dashboard.comparedLastWeek'),
+    month: t('dashboard.comparedLastMonth'),
+    last30: t('dashboard.comparedLast30'),
+  };
+
+  const TIME_RANGE_TREND_LABELS: Record<TimeRange, string> = {
+    week: t('dashboard.last7Days'),
+    month: t('dashboard.thisMonth'),
+    last30: t('dashboard.last30Days2'),
+  };
 
   const reviewQueue = getReviewQueue();
   const heatmap = getReadingHeatmap();
@@ -137,7 +159,7 @@ export default function DashboardPage() {
   const stats = [
     {
       icon: FileText,
-      label: '新增卡片',
+      label: t('dashboard.newCards'),
       value: cardsGrowth.currentPeriod,
       color: 'from-amber-gold to-amber-gold-light',
       change: formatGrowth(cardsGrowth),
@@ -146,17 +168,17 @@ export default function DashboardPage() {
     },
     {
       icon: Star,
-      label: '我的收藏',
+      label: t('dashboard.myFavorites'),
       value: favoriteCards.length,
       color: 'from-amber-400 to-yellow-400',
-      change: favoriteCards.length > 0 ? '点击查看' : '快去收藏',
+      change: favoriteCards.length > 0 ? t('dashboard.clickToView') : t('dashboard.goFavorite'),
       growth: { changePercent: 0, isPositive: true },
-      periodLabel: '重要卡片',
+      periodLabel: t('dashboard.importantCards'),
       onClick: () => navigate('/favorites'),
     },
     {
       icon: Network,
-      label: '新增关联',
+      label: t('dashboard.newLinks'),
       value: linksGrowth.currentPeriod,
       color: 'from-blue-500 to-cyan-500',
       change: formatGrowth(linksGrowth),
@@ -165,39 +187,39 @@ export default function DashboardPage() {
     },
     {
       icon: Target,
-      label: '复习完成率',
+      label: t('dashboard.reviewRate'),
       value: `${reviewCompletionRate}%`,
       color: 'from-emerald-mastered to-teal-500',
-      change: reviewCompletionRate >= 80 ? '表现优秀' : reviewCompletionRate >= 50 ? '继续加油' : '需加强',
+      change: reviewCompletionRate >= 80 ? t('dashboard.excellent') : reviewCompletionRate >= 50 ? t('dashboard.keepItUp') : t('dashboard.needsWork'),
       growth: { changePercent: 0, isPositive: reviewCompletionRate >= 50 },
       periodLabel: TIME_RANGE_TREND_LABELS[timeRange],
     },
     {
       icon: Flame,
-      label: '连续打卡',
-      value: `${streakInfo.currentStreak}天`,
+      label: t('dashboard.currentStreak'),
+      value: `${streakInfo.currentStreak}${t('dashboard.dayUnit')}`,
       color: 'from-orange-500 to-red-500',
-      change: `最长${streakInfo.longestStreak}天`,
+      change: `${t('dashboard.longestPrefix')}${streakInfo.longestStreak}${t('dashboard.longestSuffix')}`,
       growth: { changePercent: 0, isPositive: true },
-      periodLabel: '历史最长',
+      periodLabel: t('dashboard.allTimeBest'),
     },
     {
       icon: Clock,
-      label: '期间学习',
-      value: `${Math.floor(readingDurationInRange / 60)}分钟`,
+      label: t('dashboard.studyTime'),
+      value: `${Math.floor(readingDurationInRange / 60)}${t('dashboard.minuteUnit')}`,
       color: 'from-purple-500 to-indigo-500',
-      change: `${activeDaysInRange}天活跃`,
+      change: `${activeDaysInRange}${t('dashboard.daysActive')}`,
       growth: readingGrowth,
       periodLabel: formatGrowth(readingGrowth),
     },
     {
       icon: TrendingUp,
-      label: '待复习',
+      label: t('dashboard.toReview'),
       value: reviewQueue.length,
       color: 'from-rose-review to-pink-500',
       change: formatGrowth(reviewGrowth),
       growth: reviewGrowth,
-      periodLabel: '较昨日',
+      periodLabel: t('dashboard.comparedYesterday'),
     },
   ];
 
@@ -226,10 +248,10 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="font-display text-4xl font-bold text-white mb-2">
-            欢迎回来，探索者
+            {t('dashboard.welcome')}
           </h1>
           <p className="text-white/60">
-            你的知识网络正在生长，每一个链接都是智慧的桥梁。
+            {t('dashboard.welcomeDesc')}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -251,10 +273,10 @@ export default function DashboardPage() {
           <button
             onClick={() => setShowWeeklyReport(true)}
             className="p-3 rounded-xl transition-all duration-300 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white flex items-center gap-2"
-            title="生成周报"
+            title={t('dashboard.generateWeeklyReport')}
           >
             <BarChart3 className="w-5 h-5" />
-            <span className="text-sm font-medium hidden sm:inline">生成周报</span>
+            <span className="text-sm font-medium hidden sm:inline">{t('dashboard.generateWeeklyReport')}</span>
           </button>
           <button
             onClick={() => setShowNotificationSettings(true)}
@@ -263,7 +285,7 @@ export default function DashboardPage() {
                 ? 'bg-amber-gold/20 text-amber-gold hover:bg-amber-gold/30'
                 : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
             }`}
-            title="通知设置"
+            title={t('dashboard.notificationSettings')}
           >
             {notificationSettings.enabled && notificationPermission === 'granted' ? (
               <Bell className="w-5 h-5" />
@@ -276,7 +298,7 @@ export default function DashboardPage() {
             className="btn-primary flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
-            创建新卡片
+            {t('dashboard.createNewCard')}
           </button>
         </div>
       </div>
@@ -295,18 +317,17 @@ export default function DashboardPage() {
               </div>
               <div className="flex-1">
                 <h3 className="font-display text-lg font-bold text-rose-review-light mb-1">
-                  ⚠️ 连续 {consecutiveDaysOff} 天未复习
+                  {t('dashboard.noReviewWarnPrefix')} {consecutiveDaysOff} {t('dashboard.noReviewWarnSuffix')}
                 </h3>
                 <p className="text-sm text-white/60">
-                  你已有 {consecutiveDaysOff} 天没有复习卡片了，坚持复习才能保持记忆效果。
-                  现在还有 {reviewQueue.length} 张卡片等待复习，快开始吧！
+                  {t('dashboard.noReviewDesc1')} {consecutiveDaysOff} {t('dashboard.noReviewDesc2')} {reviewQueue.length} {t('dashboard.noReviewDesc3')}
                 </p>
               </div>
               <button
                 onClick={() => navigate('/review')}
                 className="btn-primary flex-shrink-0"
               >
-                立即复习
+                {t('dashboard.startReviewNow')}
               </button>
             </div>
           </motion.div>
@@ -334,13 +355,13 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h4 className="font-display font-bold text-amber-gold">
-                      🎉 成就解锁！
+                      {t('dashboard.achievementUnlocked')}
                     </h4>
                     <p className="font-medium text-white">
-                      {achievement.name}
+                      {getAchievementName(achievement.type) || achievement.name}
                     </p>
                     <p className="text-xs text-white/60">
-                      {achievement.description}
+                      {getAchievementDesc(achievement.type) || achievement.description}
                     </p>
                   </div>
                 </div>
@@ -370,11 +391,11 @@ export default function DashboardPage() {
                 <div
                   className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}
                 >
-                  <Icon className={`w-6 h-6 text-white ${stat.label === '我的收藏' && favoriteCards.length > 0 ? 'fill-white' : ''}`} />
+                  <Icon className={`w-6 h-6 text-white ${stat.label === t('dashboard.myFavorites') && favoriteCards.length > 0 ? 'fill-white' : ''}`} />
                 </div>
                 <div className="text-right">
                   <span className={`text-xs font-medium ${
-                    stat.label === '我的收藏'
+                    stat.label === t('dashboard.myFavorites')
                       ? 'text-amber-gold'
                       : stat.growth.isPositive
                       ? 'text-emerald-mastered'
@@ -403,13 +424,13 @@ export default function DashboardPage() {
           <motion.div variants={item} className="glass-card p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="font-display text-2xl font-bold text-white">
-                {timeRange === 'week' ? '本周更新' : timeRange === 'month' ? '本月更新' : '近期更新'}
+                {timeRange === 'week' ? t('dashboard.thisWeekUpdates') : timeRange === 'month' ? t('dashboard.thisMonthUpdates') : t('dashboard.recentUpdates')}
               </h2>
               <button
                 onClick={() => navigate('/cards')}
                 className="text-sm text-amber-gold hover:text-amber-gold-light flex items-center gap-1 transition-colors"
               >
-                查看全部 <ArrowRight className="w-4 h-4" />
+                {t('dashboard.viewAll')} <ArrowRight className="w-4 h-4" />
               </button>
             </div>
             <div className="space-y-3">
@@ -431,7 +452,7 @@ export default function DashboardPage() {
                       <p className="text-xs text-white/50">
                         {formatDistanceToNow(card.updatedAt, {
                           addSuffix: true,
-                          locale: zhCN,
+                          locale: dateLocale,
                         })}
                       </p>
                     </div>
@@ -469,9 +490,9 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <h3 className="font-display text-xl font-bold text-white">
-                    今日复习
+                    {t('dashboard.todayReview')}
                   </h3>
-                  <p className="text-xs text-white/50">间隔重复学习法</p>
+                  <p className="text-xs text-white/50">{t('dashboard.spacedRepetition')}</p>
                 </div>
               </div>
 
@@ -482,11 +503,11 @@ export default function DashboardPage() {
                   {reviewQueue.length}
                 </div>
                 <p className="text-white/60 text-sm mb-1">
-                  {reviewQueue.length > 0 ? '张卡片待复习' : '今日已完成'}
+                  {reviewQueue.length > 0 ? t('dashboard.cardsToReview') : t('dashboard.todayCompleted')}
                 </p>
                 {todayReviewed > 0 && (
                   <p className="text-emerald-mastered/80 text-xs">
-                    今日已复习 {todayReviewed} 张
+                    {t('dashboard.todayReviewedPrefix')} {todayReviewed} {t('dashboard.todayReviewedSuffix')}
                   </p>
                 )}
               </div>
@@ -508,13 +529,13 @@ export default function DashboardPage() {
                     className="w-full btn-primary flex items-center justify-center gap-2"
                   >
                     <Sparkles className="w-4 h-4" />
-                    开始复习
+                    {t('dashboard.startReview')}
                   </button>
                 </>
               ) : (
                 <div className="flex items-center justify-center gap-2 text-emerald-mastered">
                   <CheckCircle2 className="w-5 h-5" />
-                  <span className="font-medium">保持良好节奏！</span>
+                  <span className="font-medium">{t('dashboard.goodPace')}</span>
                 </div>
               )}
             </div>
@@ -524,7 +545,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-display text-lg font-bold text-white flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-amber-gold" />
-                复习趋势
+                {t('dashboard.reviewTrend')}
               </h3>
               <span className="text-xs text-white/50">{TIME_RANGE_TREND_LABELS[timeRange]}</span>
             </div>
@@ -564,7 +585,7 @@ export default function DashboardPage() {
                       }`}>
                         {timeRange === 'last30'
                           ? format(new Date(stat.date), 'd')
-                          : format(new Date(stat.date), 'EEE', { locale: zhCN })}
+                          : format(new Date(stat.date), 'EEE', { locale: dateLocale })}
                       </span>
                     )}
                   </div>
@@ -572,16 +593,16 @@ export default function DashboardPage() {
               })}
             </div>
             <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between text-sm">
-              <span className="text-white/50">{TIME_RANGE_TREND_LABELS[timeRange]}总计</span>
+              <span className="text-white/50">{TIME_RANGE_TREND_LABELS[timeRange]}{t('dashboard.trendTotalPrefix')}</span>
               <span className="text-white font-medium">
-                {reviewStats.reduce((sum, s) => sum + s.reviewed, 0)} 次复习
+                {reviewStats.reduce((sum, s) => sum + s.reviewed, 0)} {t('dashboard.trendTotalSuffix')}
               </span>
             </div>
           </div>
 
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4">
-              阅读活跃度
+              {t('dashboard.readingActivity')}
             </h3>
             <div className={`grid gap-1 ${
               timeRange === 'week' ? 'grid-cols-7' : timeRange === 'month' ? 'grid-cols-7' : 'grid-cols-6'
@@ -602,7 +623,7 @@ export default function DashboardPage() {
                           ? `rgba(245, 158, 11, ${0.2 + intensity * 0.8})`
                           : 'rgba(255, 255, 255, 0.05)',
                     }}
-                    title={`${dateStr}: ${minutes}分钟`}
+                    title={`${dateStr}: ${minutes}${t('dashboard.minuteUnit')}`}
                   />
                 );
               })}
@@ -610,12 +631,12 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mt-3 text-xs text-white/40">
               <span>{format(rangeInfo.start, 'M/d')}</span>
               <div className="flex gap-1 items-center">
-                <span>少</span>
+                <span>{t('dashboard.activityLow')}</span>
                 <div className="w-3 h-3 rounded-sm bg-white/10" />
                 <div className="w-3 h-3 rounded-sm bg-amber-gold/30" />
                 <div className="w-3 h-3 rounded-sm bg-amber-gold/60" />
                 <div className="w-3 h-3 rounded-sm bg-amber-gold" />
-                <span>多</span>
+                <span>{t('dashboard.activityHigh')}</span>
               </div>
               <span>{format(rangeInfo.end, 'M/d')}</span>
             </div>
@@ -624,7 +645,7 @@ export default function DashboardPage() {
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
               <Trophy className="w-5 h-5 text-amber-gold" />
-              成就徽章
+              {t('dashboard.achievementBadges')}
             </h3>
             <div className="space-y-3">
               {(Object.keys(ACHIEVEMENT_DEFINITIONS) as AchievementType[]).map((type) => {
@@ -658,18 +679,18 @@ export default function DashboardPage() {
                               unlocked ? 'text-amber-gold' : 'text-white/60'
                             }`}
                           >
-                            {def.name}
+                            {getAchievementName(type) || def.name}
                           </span>
                           {unlocked ? (
                             <CheckCircle2 className="w-4 h-4 text-emerald-mastered" />
                           ) : (
                             <span className="text-xs text-white/40">
-                              {streakInfo.currentStreak}/{def.days}天
+                              {streakInfo.currentStreak}/{def.days}{t('dashboard.dayUnit')}
                             </span>
                           )}
                         </div>
                         <p className="text-xs text-white/40 mb-2">
-                          {def.description}
+                          {getAchievementDesc(type) || def.description}
                         </p>
                         <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                           <motion.div
@@ -691,7 +712,7 @@ export default function DashboardPage() {
             </div>
             <div className="mt-4 pt-4 border-t border-white/10 text-center">
               <p className="text-sm text-white/50">
-                已解锁 <span className="text-amber-gold font-medium">{streakInfo.achievements.length}</span> / {Object.keys(ACHIEVEMENT_DEFINITIONS).length} 个成就
+                {t('dashboard.unlockedPrefix')} <span className="text-amber-gold font-medium">{streakInfo.achievements.length}</span> / {Object.keys(ACHIEVEMENT_DEFINITIONS).length} {t('dashboard.unlockedSuffix')}
               </p>
             </div>
           </div>
@@ -720,7 +741,7 @@ export default function DashboardPage() {
                     <div className="w-10 h-10 rounded-xl bg-amber-gold/20 flex items-center justify-center">
                       <Bell className="w-5 h-5 text-amber-gold" />
                     </div>
-                    通知设置
+                    {t('dashboard.notificationModalTitle')}
                   </h2>
                   <button
                     onClick={() => setShowNotificationSettings(false)}
@@ -733,16 +754,16 @@ export default function DashboardPage() {
                 {!notificationSupported ? (
                   <div className="text-center py-8">
                     <AlertTriangle className="w-12 h-12 text-rose-review-light mx-auto mb-3" />
-                    <p className="text-white/80">你的浏览器不支持通知功能</p>
-                    <p className="text-sm text-white/50 mt-1">请使用现代浏览器以获得完整体验</p>
+                    <p className="text-white/80">{t('dashboard.noNotificationSupport')}</p>
+                    <p className="text-sm text-white/50 mt-1">{t('dashboard.useModernBrowser')}</p>
                   </div>
                 ) : (
                   <div className="space-y-6">
                     <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
                       <div>
-                        <h3 className="font-medium text-white">每日复习提醒</h3>
+                        <h3 className="font-medium text-white">{t('dashboard.dailyReviewReminder')}</h3>
                         <p className="text-xs text-white/50 mt-1">
-                          在指定时间提醒你复习卡片
+                          {t('dashboard.dailyReviewDesc')}
                         </p>
                       </div>
                       <button
@@ -775,10 +796,10 @@ export default function DashboardPage() {
                           <AlertTriangle className="w-5 h-5 text-rose-review-light flex-shrink-0 mt-0.5" />
                           <div>
                             <p className="text-sm text-rose-review-light font-medium">
-                              通知权限被拒绝
+                              {t('dashboard.notifPermissionDeniedTitle')}
                             </p>
                             <p className="text-xs text-white/50 mt-1">
-                              请在浏览器设置中允许本网站发送通知
+                              {t('dashboard.notifPermissionDeniedDesc')}
                             </p>
                           </div>
                         </div>
@@ -793,7 +814,7 @@ export default function DashboardPage() {
                       >
                         <div>
                           <label className="text-sm text-white/70 mb-2 block">
-                            提醒时间
+                            {t('dashboard.reminderTime')}
                           </label>
                           <div className="flex items-center gap-3">
                             <select
@@ -808,7 +829,7 @@ export default function DashboardPage() {
                             >
                               {Array.from({ length: 24 }).map((_, h) => (
                                 <option key={h} value={h}>
-                                  {h.toString().padStart(2, '0')} 时
+                                  {h.toString().padStart(2, '0')} {t('dashboard.hourUnit')}
                                 </option>
                               ))}
                             </select>
@@ -825,7 +846,7 @@ export default function DashboardPage() {
                             >
                               {[0, 15, 30, 45].map((m) => (
                                 <option key={m} value={m}>
-                                  {m.toString().padStart(2, '0')} 分
+                                  {m.toString().padStart(2, '0')} {t('dashboard.minuteUnit')}
                                 </option>
                               ))}
                             </select>
@@ -837,14 +858,14 @@ export default function DashboardPage() {
                           className="w-full btn-secondary flex items-center justify-center gap-2"
                         >
                           <Sparkles className="w-4 h-4" />
-                          发送测试通知
+                          {t('dashboard.sendTestNotif')}
                         </button>
                       </motion.div>
                     )}
 
                     <div className="pt-4 border-t border-white/10">
                       <p className="text-xs text-white/40 text-center">
-                        提醒将在每天指定时间发送，仅当有待复习卡片时才会通知
+                        {t('dashboard.notifBottomTip')}
                       </p>
                     </div>
                   </div>

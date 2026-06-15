@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { CardRelations, RelationNode } from '../types';
 import { cn } from '../lib/utils';
+import { useI18n } from '../i18n';
 
 type ViewMode = 'tree' | 'list';
 
@@ -27,6 +28,7 @@ interface CardRelationPanelProps {
 export default function CardRelationPanel({ cardId, className }: CardRelationPanelProps) {
   const navigate = useNavigate();
   const { cards } = useStore();
+  const { language, t } = useI18n();
   const [viewMode, setViewMode] = useState<ViewMode>('tree');
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
@@ -46,7 +48,7 @@ export default function CardRelationPanel({ cardId, className }: CardRelationPan
   };
 
   const getCardTitleById = (id: string) => {
-    return cards.find((c) => c.id === id)?.title || '未知卡片';
+    return cards.find((c) => c.id === id)?.title || t('relation.unknownCard');
   };
 
   const handleNodeClick = (nodeCardId: string) => {
@@ -202,14 +204,14 @@ export default function CardRelationPanel({ cardId, className }: CardRelationPan
               'bg-blue-400/15 text-blue-400'
           )}
         >
-          {node.relationType === 'outgoing' && '正向'}
-          {node.relationType === 'incoming' && '反向'}
-          {node.relationType === 'second-order' && '二阶'}
+          {node.relationType === 'outgoing' && t('relation.outgoing')}
+          {node.relationType === 'incoming' && t('relation.incoming')}
+          {node.relationType === 'second-order' && t('relation.secondOrder')}
         </span>
       </div>
       <div className="flex items-center text-xs text-white/50 mb-2">
         <Layers className="w-3 h-3 mr-1" />
-        <span>路径: </span>
+        <span>{t('relation.path')} </span>
         <span className="ml-1">
           {renderPath(node.path, relations.currentCardId)}
         </span>
@@ -239,15 +241,15 @@ export default function CardRelationPanel({ cardId, className }: CardRelationPan
       <div className={cn('glass-card p-6', className)}>
         <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
           <GitBranch className="w-5 h-5 text-amber-gold" />
-          关系面板
+          {t('relation.panelTitle')}
         </h3>
         <div className="text-center py-8">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
             <Network className="w-8 h-8 text-white/20" />
           </div>
-          <p className="text-white/60 text-sm">暂无关联关系</p>
+          <p className="text-white/60 text-sm">{t('relation.noRelations')}</p>
           <p className="text-white/40 text-xs mt-1">
-            使用 [[卡片标题]] 语法创建双向链接
+            {t('relation.bidiHint')}
           </p>
         </div>
       </div>
@@ -259,9 +261,9 @@ export default function CardRelationPanel({ cardId, className }: CardRelationPan
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-display text-lg font-bold text-white flex items-center gap-2">
           <GitBranch className="w-5 h-5 text-amber-gold" />
-          关系面板
+          {t('relation.panelTitle')}
           <span className="text-xs font-normal text-white/40 ml-2">
-            共 {totalRelations} 个关联
+            {t('relation.totalRelationsPrefix')} {totalRelations} {t('relation.totalRelationsSuffix')}
           </span>
         </h3>
         <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
@@ -273,7 +275,7 @@ export default function CardRelationPanel({ cardId, className }: CardRelationPan
                 ? 'bg-amber-gold/20 text-amber-gold'
                 : 'text-white/50 hover:text-white'
             )}
-            title="树状视图"
+            title={t('relation.treeView')}
           >
             <GitBranch className="w-4 h-4" />
           </button>
@@ -285,7 +287,7 @@ export default function CardRelationPanel({ cardId, className }: CardRelationPan
                 ? 'bg-amber-gold/20 text-amber-gold'
                 : 'text-white/50 hover:text-white'
             )}
-            title="列表视图"
+            title={t('relation.listView')}
           >
             <List className="w-4 h-4" />
           </button>
@@ -295,19 +297,19 @@ export default function CardRelationPanel({ cardId, className }: CardRelationPan
       <div className="flex flex-wrap gap-3 mb-4 text-xs">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-full bg-amber-gold/20 border border-amber-gold/40" />
-          <span className="text-white/60">当前卡片</span>
+          <span className="text-white/60">{t('relation.currentCard')}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <ArrowRight className="w-3 h-3 text-amber-gold" />
-          <span className="text-white/60">正向链接</span>
+          <span className="text-white/60">{t('relation.forwardLinks')}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <ArrowLeft className="w-3 h-3 text-emerald-mastered" />
-          <span className="text-white/60">反向链接</span>
+          <span className="text-white/60">{t('relation.backwardLinks')}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Shuffle className="w-3 h-3 text-blue-400" />
-          <span className="text-white/60">二阶关联</span>
+          <span className="text-white/60">{t('relation.secondOrderLinks')}</span>
         </div>
       </div>
 
@@ -341,7 +343,7 @@ export default function CardRelationPanel({ cardId, className }: CardRelationPan
               <div>
                 <h4 className="text-xs font-medium text-white/60 mb-2 flex items-center gap-1.5">
                   <ArrowRight className="w-3.5 h-3.5 text-amber-gold" />
-                  引用的卡片 ({relations.firstOrder.outgoing.length})
+                  {t('relation.outgoingCards')} ({relations.firstOrder.outgoing.length})
                 </h4>
                 <div className="space-y-1">
                   {relations.firstOrder.outgoing.map((node) =>
@@ -355,7 +357,7 @@ export default function CardRelationPanel({ cardId, className }: CardRelationPan
               <div>
                 <h4 className="text-xs font-medium text-white/60 mb-2 flex items-center gap-1.5">
                   <ArrowLeft className="w-3.5 h-3.5 text-emerald-mastered" />
-                  被引用的卡片 ({relations.firstOrder.incoming.length})
+                  {t('relation.incomingCards')} ({relations.firstOrder.incoming.length})
                 </h4>
                 <div className="space-y-1">
                   {relations.firstOrder.incoming.map((node) =>
@@ -369,10 +371,10 @@ export default function CardRelationPanel({ cardId, className }: CardRelationPan
               <div>
                 <h4 className="text-xs font-medium text-white/60 mb-2 flex items-center gap-1.5">
                   <Shuffle className="w-3.5 h-3.5 text-blue-400" />
-                  二阶间接关联 ({relations.secondOrder.length})
+                  {t('relation.secondOrderCards')} ({relations.secondOrder.length})
                 </h4>
                 <div className="text-xs text-white/40 mb-2">
-                  点击一阶关联节点的箭头展开/收起二阶关联
+                  {t('relation.secondOrderHint')}
                 </div>
               </div>
             )}
@@ -389,7 +391,7 @@ export default function CardRelationPanel({ cardId, className }: CardRelationPan
               <div>
                 <h4 className="text-xs font-medium text-white/60 mb-2 flex items-center gap-1.5">
                   <ArrowRight className="w-3.5 h-3.5 text-amber-gold" />
-                  引用的卡片 ({relations.firstOrder.outgoing.length})
+                  {t('relation.outgoingCards')} ({relations.firstOrder.outgoing.length})
                 </h4>
                 <div className="space-y-2">
                   {relations.firstOrder.outgoing.map((node) =>
@@ -403,7 +405,7 @@ export default function CardRelationPanel({ cardId, className }: CardRelationPan
               <div>
                 <h4 className="text-xs font-medium text-white/60 mb-2 flex items-center gap-1.5">
                   <ArrowLeft className="w-3.5 h-3.5 text-emerald-mastered" />
-                  被引用的卡片 ({relations.firstOrder.incoming.length})
+                  {t('relation.incomingCards')} ({relations.firstOrder.incoming.length})
                 </h4>
                 <div className="space-y-2">
                   {relations.firstOrder.incoming.map((node) =>
@@ -417,7 +419,7 @@ export default function CardRelationPanel({ cardId, className }: CardRelationPan
               <div>
                 <h4 className="text-xs font-medium text-white/60 mb-2 flex items-center gap-1.5">
                   <Shuffle className="w-3.5 h-3.5 text-blue-400" />
-                  二阶间接关联 ({relations.secondOrder.length})
+                  {t('relation.secondOrderCards')} ({relations.secondOrder.length})
                 </h4>
                 <div className="space-y-2">
                   {relations.secondOrder.map((node) => renderListItem(node))}

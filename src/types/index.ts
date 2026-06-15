@@ -1,5 +1,7 @@
 export type TimeRange = 'week' | 'month' | 'last30';
 
+export type ReviewPriorityLevel = 'high' | 'medium' | 'low';
+
 export interface Card {
   id: string;
   title: string;
@@ -13,6 +15,8 @@ export interface Card {
   reviewCount: number;
   isFavorite: boolean;
   spaceId?: string;
+  reviewPriority: ReviewPriorityLevel;
+  customNextReviewDate?: Date;
 }
 
 export interface Link {

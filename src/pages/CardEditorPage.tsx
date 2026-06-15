@@ -13,6 +13,8 @@ import {
   LayoutTemplate,
   Star,
   FolderOpen,
+  Calendar,
+  Flag,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { MarkdownViewer } from '../components/MarkdownViewer';
@@ -21,7 +23,7 @@ import CardRelationPanel from '../components/CardRelationPanel';
 import { TemplateSelector } from '../components/TemplateSelector';
 import { MarkdownToolbar, ViewMode, MarkdownAction } from '../components/MarkdownToolbar';
 import { insertMarkdown } from '../utils/markdownEditor';
-import { LinkSuggestion, CardTemplate } from '../types';
+import { LinkSuggestion, CardTemplate, ReviewPriorityLevel } from '../types';
 
 export default function CardEditorPage() {
   const { id } = useParams();
@@ -59,6 +61,14 @@ export default function CardEditorPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [justLinkedId, setJustLinkedId] = useState<string | null>(null);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [reviewPriority, setReviewPriority] = useState<ReviewPriorityLevel>(
+    card?.reviewPriority || 'medium'
+  );
+  const [customNextReviewDate, setCustomNextReviewDate] = useState<string>(
+    card?.customNextReviewDate
+      ? new Date(card.customNextReviewDate).toISOString().split('T')[0]
+      : ''
+  );
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -124,6 +134,8 @@ export default function CardEditorPage() {
           content,
           tags,
           spaceId: selectedSpaceId || undefined,
+          reviewPriority,
+          customNextReviewDate: customNextReviewDate ? new Date(customNextReviewDate) : undefined,
         });
         navigate(`/cards/${newCard.id}`);
       } else if (id) {
@@ -132,6 +144,8 @@ export default function CardEditorPage() {
           content,
           tags,
           spaceId: selectedSpaceId || undefined,
+          reviewPriority,
+          customNextReviewDate: customNextReviewDate ? new Date(customNextReviewDate) : null,
         });
       }
     } finally {
@@ -583,35 +597,94 @@ export default function CardEditorPage() {
 
           {!isNew && existingCard && (
             <div className="glass-card p-6">
-              <h3 className="font-display text-lg font-bold text-white mb-4">
-                复习信息
+              <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <Flag className="w-5 h-5 text-amber-gold" />
+                复习设置
               </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-white/60">复习次数</span>
-                  <span className="text-white font-medium">
-                    {existingCard.reviewCount} 次
-                  </span>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-white/60 mb-2">复习优先级</label>
+                  <div className="flex gap-2">
+                    {(['high', 'medium', 'low'] as ReviewPriorityLevel[]).map((level) => {
+                      const config = {
+                        high: { label: '高', color: 'bg-rose-500/20 border-rose-500/50 text-rose-400', activeColor: 'bg-rose-500/30 border-rose-500 text-rose-300' },
+                        medium: { label: '中', color: 'bg-amber-500/20 border-amber-500/50 text-amber-400', activeColor: 'bg-amber-500/30 border-amber-500 text-amber-300' },
+                        low: { label: '低', color: 'bg-slate-500/20 border-slate-500/50 text-slate-400', activeColor: 'bg-slate-500/30 border-slate-500 text-slate-300' },
+                      }[level];
+                      const isActive = reviewPriority === level;
+                      return (
+                        <button
+                          key={level}
+                          onClick={() => setReviewPriority(level)}
+                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                            isActive ? config.activeColor : config.color
+                          } hover:scale-105`}
+                        >
+                          {config.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-white/40 mt-1.5">
+                    高优先级卡片在复习队列中排在前面
+                  </p>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-white/60">当前间隔</span>
-                  <span className="text-white font-medium">
-                    {existingCard.reviewInterval} 天
-                  </span>
+
+                <div>
+                  <label className="block text-sm text-white/60 mb-2 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" />
+                    自定义下次复习日期
+                  </label>
+                  <input
+                    type="date"
+                    value={customNextReviewDate}
+                    onChange={(e) => setCustomNextReviewDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none hover:border-white/20 transition-colors [color-scheme:dark]"
+                  />
+                  {customNextReviewDate && (
+                    <button
+                      onClick={() => setCustomNextReviewDate('')}
+                      className="text-xs text-white/40 hover:text-white/60 mt-1 transition-colors"
+                    >
+                      清除自定义日期，恢复系统排期
+                    </button>
+                  )}
+                  <p className="text-xs text-white/40 mt-1.5">
+                    设置后，卡片将在指定日期出现在复习队列中
+                  </p>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-white/60">难度系数</span>
-                  <span className="text-white font-medium">
-                    {existingCard.easeFactor.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-white/60">上次复习</span>
-                  <span className="text-white font-medium">
-                    {existingCard.lastReviewedAt
-                      ? new Date(existingCard.lastReviewedAt).toLocaleDateString()
-                      : '从未复习'}
-                  </span>
+
+                <div className="pt-2 border-t border-white/10">
+                  <h4 className="text-sm text-white/60 mb-2">复习统计</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">复习次数</span>
+                      <span className="text-white font-medium">
+                        {existingCard.reviewCount} 次
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">当前间隔</span>
+                      <span className="text-white font-medium">
+                        {existingCard.reviewInterval} 天
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">难度系数</span>
+                      <span className="text-white font-medium">
+                        {existingCard.easeFactor.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">上次复习</span>
+                      <span className="text-white font-medium">
+                        {existingCard.lastReviewedAt
+                          ? new Date(existingCard.lastReviewedAt).toLocaleDateString()
+                          : '从未复习'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

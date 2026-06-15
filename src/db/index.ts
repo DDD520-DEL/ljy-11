@@ -81,6 +81,26 @@ export class KnowledgeBaseDB extends Dexie {
         }
       });
     });
+    this.version(7).stores({
+      cards: 'id, title, createdAt, updatedAt, lastReviewedAt, isFavorite, spaceId, reviewPriority',
+      links: 'id, sourceCardId, targetCardId, createdAt',
+      readingRecords: 'id, cardId, startTime, endTime, fromCardId',
+      importSources: 'id, type, importedAt, processed',
+      reviewHistories: 'id, cardId, reviewDate',
+      cardVersions: 'id, cardId, createdAt',
+      achievements: 'id, type, unlockedAt',
+      cardTemplates: 'id, name, createdAt, updatedAt',
+      knowledgeSpaces: 'id, name, createdAt, updatedAt',
+    }).upgrade(async (tx) => {
+      await tx.table('cards').toCollection().modify((card: any) => {
+        if (card.reviewPriority === undefined) {
+          card.reviewPriority = 'medium';
+        }
+        if (card.customNextReviewDate === undefined) {
+          card.customNextReviewDate = null;
+        }
+      });
+    });
   }
 }
 

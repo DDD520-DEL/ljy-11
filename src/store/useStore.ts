@@ -25,6 +25,7 @@ import {
   calculateNextReview,
   calculateLinkDensity,
   calculateReviewPriority,
+  isCardDueForReview,
   parseWikiLinks,
   tokenizeWithFilter,
   extractCommonKeywords,
@@ -203,6 +204,8 @@ export const useStore = create<StoreState>((set, get) => ({
       reviewCount: 0,
       isFavorite: false,
       spaceId: partialCard.spaceId !== undefined ? partialCard.spaceId : (activeSpaceId || undefined),
+      reviewPriority: partialCard.reviewPriority || 'medium',
+      customNextReviewDate: partialCard.customNextReviewDate || undefined,
     };
 
     await db.cards.add(newCard);
@@ -522,13 +525,10 @@ export const useStore = create<StoreState>((set, get) => ({
       filteredCards = cards.filter((c) => c.spaceId === activeSpaceId);
     }
 
+    const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
     return filteredCards
-      .filter((card) => {
-        if (!card.lastReviewedAt) return true;
-        const daysSinceReview =
-          (now.getTime() - card.lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24);
-        return daysSinceReview >= card.reviewInterval;
-      })
+      .filter((card) => isCardDueForReview(card, now))
       .map((card) => {
         const outgoingLinks = links.filter((l) => l.sourceCardId === card.id);
         const incomingLinks = links.filter((l) => l.targetCardId === card.id);
@@ -540,10 +540,17 @@ export const useStore = create<StoreState>((set, get) => ({
         );
         return {
           ...card,
-          reviewPriority: calculateReviewPriority(card, density, now),
+          reviewPriority: card.reviewPriority,
+          _algorithmicPriority: calculateReviewPriority(card, density, now),
         };
       })
-      .sort((a, b) => b.reviewPriority - a.reviewPriority);
+      .sort((a, b) => {
+        const pa = priorityOrder[a.reviewPriority] ?? 1;
+        const pb = priorityOrder[b.reviewPriority] ?? 1;
+        if (pa !== pb) return pa - pb;
+        return b._algorithmicPriority - a._algorithmicPriority;
+      })
+      .map(({ _algorithmicPriority, ...card }) => card as Card);
   },
 
   submitReview: async (cardId, rating) => {
@@ -551,7 +558,10 @@ export const useStore = create<StoreState>((set, get) => ({
     if (!card) return;
 
     const updates = calculateNextReview(card, rating);
-    await db.cards.update(cardId, updates);
+    await db.cards.update(cardId, {
+      ...updates,
+      customNextReviewDate: null,
+    });
 
     const history: ReviewHistory = {
       id: generateId(),

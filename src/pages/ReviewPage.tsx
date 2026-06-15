@@ -10,10 +10,11 @@ import {
   TrendingUp,
   Clock,
   Target,
+  Flag,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { MarkdownViewer } from '../components/MarkdownViewer';
-import { ReviewRating } from '../types';
+import { ReviewRating, ReviewPriorityLevel } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
@@ -24,6 +25,12 @@ const ratingLabels: Record<ReviewRating, { label: string; color: string; descrip
   3: { label: '勉强回忆', color: 'bg-yellow-500', description: '勉强能够回忆' },
   4: { label: '轻松回忆', color: 'bg-lime-500', description: '轻松回忆' },
   5: { label: '完美回忆', color: 'bg-emerald-500', description: '完美回忆' },
+};
+
+const priorityBadge: Record<ReviewPriorityLevel, { label: string; color: string }> = {
+  high: { label: '高优先', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
+  medium: { label: '中优先', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  low: { label: '低优先', color: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
 };
 
 export default function ReviewPage() {
@@ -120,7 +127,7 @@ export default function ReviewPage() {
             复习中心
           </h1>
           <p className="text-white/60">
-            基于间隔重复算法，智能推荐复习内容
+            基于间隔重复算法，按优先级智能排序复习内容
             {activeSpaceId && knowledgeSpaces.find((s) => s.id === activeSpaceId) && (
               <span className="ml-2 text-amber-gold">
                 · {knowledgeSpaces.find((s) => s.id === activeSpaceId)!.icon} {knowledgeSpaces.find((s) => s.id === activeSpaceId)!.name}
@@ -175,12 +182,14 @@ export default function ReviewPage() {
         </div>
         <div className="stat-card p-4">
           <div className="flex items-center gap-3">
-            <Sparkles className="w-5 h-5 text-blue-400" />
+            <Flag className="w-5 h-5 text-rose-400" />
             <div>
-              <p className="text-xl font-bold text-white">
-                {currentCard?.reviewCount || 0}
-              </p>
-              <p className="text-xs text-white/50">复习次数</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400">{reviewQueue.filter(c => c.reviewPriority === 'high').length}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">{reviewQueue.filter(c => c.reviewPriority === 'medium').length}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-slate-500/20 text-slate-400">{reviewQueue.filter(c => c.reviewPriority === 'low').length}</span>
+              </div>
+              <p className="text-xs text-white/50 mt-0.5">高/中/低优先</p>
             </div>
           </div>
         </div>
@@ -213,6 +222,10 @@ export default function ReviewPage() {
                   <span className="px-2 py-0.5 text-xs bg-amber-gold/20 text-amber-gold rounded-full">
                     #{currentIndex + 1}
                   </span>
+                  <span className={`px-2 py-0.5 text-xs rounded-full border ${priorityBadge[currentCard.reviewPriority].color}`}>
+                    <Flag className="w-3 h-3 inline mr-0.5" />
+                    {priorityBadge[currentCard.reviewPriority].label}
+                  </span>
                   {currentCard.lastReviewedAt && (
                     <span className="text-xs text-white/40">
                       上次复习:{' '}
@@ -220,6 +233,11 @@ export default function ReviewPage() {
                         addSuffix: true,
                         locale: zhCN,
                       })}
+                    </span>
+                  )}
+                  {currentCard.customNextReviewDate && (
+                    <span className="text-xs text-blue-400/70">
+                      自定义: {new Date(currentCard.customNextReviewDate).toLocaleDateString()}
                     </span>
                   )}
                 </div>

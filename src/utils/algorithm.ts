@@ -1,4 +1,4 @@
-import { Card, Link, ReviewHistory, ReadingRecord, Achievement, AchievementType, LearningDay, StreakInfo, WeeklyReport, TimeRange } from '../types';
+import { Card, Link, ReviewHistory, ReadingRecord, Achievement, AchievementType, LearningDay, StreakInfo, WeeklyReport, TimeRange, ReviewPriorityLevel } from '../types';
 
 export function getTimeRangeDates(range: TimeRange): { start: Date; end: Date; days: number } {
   const now = new Date();
@@ -174,13 +174,23 @@ export function calculateCosineSimilarity(
   return denom === 0 ? 0 : dotProduct / denom;
 }
 
+export function getPriorityWeight(priority: ReviewPriorityLevel): number {
+  switch (priority) {
+    case 'high': return 100;
+    case 'medium': return 50;
+    case 'low': return 0;
+  }
+}
+
 export function calculateReviewPriority(
   card: Card,
   linkDensity: number,
   now: Date
 ): number {
+  const manualWeight = getPriorityWeight(card.reviewPriority);
+
   if (!card.lastReviewedAt) {
-    return 1 + linkDensity * 2;
+    return manualWeight + 1 + linkDensity * 2;
   }
 
   const daysSinceLastReview =
@@ -191,7 +201,20 @@ export function calculateReviewPriority(
   const densityPriority = linkDensity * 2;
   const easePriority = (3 - card.easeFactor) * 0.5;
 
-  return timePriority + densityPriority + Math.max(easePriority, 0);
+  return manualWeight + timePriority + densityPriority + Math.max(easePriority, 0);
+}
+
+export function isCardDueForReview(card: Card, now: Date): boolean {
+  if (card.customNextReviewDate) {
+    const customDate = new Date(card.customNextReviewDate);
+    customDate.setHours(23, 59, 59, 999);
+    return now.getTime() >= customDate.getTime();
+  }
+
+  if (!card.lastReviewedAt) return true;
+  const daysSinceReview =
+    (now.getTime() - card.lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24);
+  return daysSinceReview >= card.reviewInterval;
 }
 
 export function parseWikiLinks(content: string): string[] {
@@ -413,21 +436,11 @@ export function getReadingTimeWeekOverWeek(
 
 export function getReviewQueueDayOverDay(cards: Card[]): PeriodComparison {
   const now = new Date();
-  const todayCount = cards.filter((card) => {
-    if (!card.lastReviewedAt) return true;
-    const daysSinceReview =
-      (now.getTime() - card.lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24);
-    return daysSinceReview >= card.reviewInterval;
-  }).length;
+  const todayCount = cards.filter((card) => isCardDueForReview(card, now)).length;
 
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayCount = cards.filter((card) => {
-    if (!card.lastReviewedAt) return true;
-    const daysSinceReview =
-      (yesterday.getTime() - card.lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24);
-    return daysSinceReview >= card.reviewInterval;
-  }).length;
+  const yesterdayCount = cards.filter((card) => isCardDueForReview(card, yesterday)).length;
 
   const changePercent =
     yesterdayCount === 0
@@ -654,12 +667,7 @@ export function generateWeeklyReport(
     (h) => getDateKey(new Date(h.reviewDate)) >= startDate && getDateKey(new Date(h.reviewDate)) <= endDate
   );
 
-  const cardsNeedingReview = cards.filter((card) => {
-    if (!card.lastReviewedAt) return true;
-    const daysSinceReview =
-      (now.getTime() - card.lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24);
-    return daysSinceReview >= card.reviewInterval;
-  });
+  const cardsNeedingReview = cards.filter((card) => isCardDueForReview(card, now));
   const reviewedCardIds = new Set(reviewsInWeek.map((h) => h.cardId));
   const totalReviewableCards = new Set(reviewsInWeek.map((h) => h.cardId)).size + cardsNeedingReview.length;
   const reviewCompletionRate = totalReviewableCards > 0
@@ -909,12 +917,7 @@ export function getReviewCompletionRate(
   const endKey = getDateKey(end);
 
   const now = new Date();
-  const cardsNeedingReview = cards.filter((card) => {
-    if (!card.lastReviewedAt) return true;
-    const daysSinceReview =
-      (now.getTime() - card.lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24);
-    return daysSinceReview >= card.reviewInterval;
-  });
+  const cardsNeedingReview = cards.filter((card) => isCardDueForReview(card, now));
 
   const reviewedInPeriod = new Set(
     reviewHistories

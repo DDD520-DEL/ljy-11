@@ -26,6 +26,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       easeFactor: 2.5,
       reviewCount: 4,
       isFavorite: true,
+      reviewPriority: 'high',
     },
     {
       id: generateId(),
@@ -47,6 +48,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       easeFactor: 2.6,
       reviewCount: 3,
       isFavorite: true,
+      reviewPriority: 'high',
     },
     {
       id: generateId(),
@@ -75,6 +77,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       easeFactor: 2.8,
       reviewCount: 5,
       isFavorite: false,
+      reviewPriority: 'high',
     },
     {
       id: generateId(),
@@ -99,6 +102,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       easeFactor: 2.4,
       reviewCount: 2,
       isFavorite: false,
+      reviewPriority: 'medium',
     },
     {
       id: generateId(),
@@ -125,6 +129,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       easeFactor: 2.3,
       reviewCount: 3,
       isFavorite: false,
+      reviewPriority: 'medium',
     },
     {
       id: generateId(),
@@ -147,6 +152,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       easeFactor: 2.5,
       reviewCount: 0,
       isFavorite: false,
+      reviewPriority: 'low',
     },
     {
       id: generateId(),
@@ -168,6 +174,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       easeFactor: 2.5,
       reviewCount: 1,
       isFavorite: false,
+      reviewPriority: 'medium',
     },
     {
       id: generateId(),
@@ -192,6 +199,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       easeFactor: 2.6,
       reviewCount: 2,
       isFavorite: false,
+      reviewPriority: 'medium',
     },
     {
       id: generateId(),
@@ -211,6 +219,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       easeFactor: 2.5,
       reviewCount: 0,
       isFavorite: false,
+      reviewPriority: 'low',
     },
     {
       id: generateId(),
@@ -236,6 +245,7 @@ export function generateMockData(): { cards: Card[]; links: Link[] } {
       easeFactor: 2.5,
       reviewCount: 1,
       isFavorite: false,
+      reviewPriority: 'medium',
     },
   ];
 

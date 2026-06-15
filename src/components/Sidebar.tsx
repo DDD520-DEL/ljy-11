@@ -24,6 +24,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useI18n } from '../i18n';
 import { KnowledgeSpace } from '../types';
 
 interface SidebarProps {
@@ -38,6 +39,7 @@ const spaceColors = [
 
 export function Sidebar({ onOpenSearch }: SidebarProps) {
   const location = useLocation();
+  const { t } = useI18n();
   const {
     cards,
     knowledgeSpaces,
@@ -106,16 +108,16 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
   };
 
   const navItems = [
-    { path: '/', icon: LayoutDashboard, label: '仪表盘' },
-    { path: '/favorites', icon: Star, label: '我的收藏' },
-    { path: '/cards', icon: FileText, label: '知识卡片' },
-    { path: '/templates', icon: LayoutTemplate, label: '模板管理' },
-    { path: '/tags', icon: Tag, label: '标签管理' },
-    { path: '/graph', icon: Network, label: '知识图谱' },
-    { path: '/import', icon: Upload, label: '数据导入' },
-    { path: '/export', icon: Download, label: '数据导出' },
-    { path: '/trajectory', icon: BarChart3, label: '阅读轨迹' },
-    { path: '/review', icon: BookOpen, label: '复习中心' },
+    { path: '/', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
+    { path: '/favorites', icon: Star, labelKey: 'nav.favorites' },
+    { path: '/cards', icon: FileText, labelKey: 'nav.cards' },
+    { path: '/templates', icon: LayoutTemplate, labelKey: 'nav.templates' },
+    { path: '/tags', icon: Tag, labelKey: 'nav.tags' },
+    { path: '/graph', icon: Network, labelKey: 'nav.graph' },
+    { path: '/import', icon: Upload, labelKey: 'nav.import' },
+    { path: '/export', icon: Download, labelKey: 'nav.export' },
+    { path: '/trajectory', icon: BarChart3, labelKey: 'nav.reading' },
+    { path: '/review', icon: BookOpen, labelKey: 'nav.review' },
   ];
 
   return (
@@ -126,8 +128,8 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
             <Brain className="w-5 h-5 text-deep-space" />
           </div>
           <div>
-            <h1 className="font-display text-xl font-bold text-white">智识</h1>
-            <p className="text-xs text-white/50">知识网络平台</p>
+            <h1 className="font-display text-xl font-bold text-white">{t('app.title')}</h1>
+            <p className="text-xs text-white/50">{t('app.subtitle')}</p>
           </div>
         </div>
       </div>
@@ -138,7 +140,7 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
           className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/40 text-sm transition-all duration-200 hover:bg-white/10 hover:text-white/60 hover:border-white/20"
         >
           <Search className="w-4 h-4" />
-          <span className="flex-1 text-left">全局搜索...</span>
+          <span className="flex-1 text-left">{t('nav.search')}</span>
           <kbd className="text-xs px-1.5 py-0.5 rounded bg-white/5 border border-white/10">⌘K</kbd>
         </button>
       </div>
@@ -154,7 +156,7 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
               className={`nav-item ${isActive ? 'active' : ''}`}
             >
               <Icon className="w-5 h-5" />
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1">{t(item.labelKey)}</span>
               {item.path === '/favorites' && favoriteCount > 0 && (
                 <span className="px-2 py-0.5 text-xs bg-amber-gold text-deep-space rounded-full font-medium">
                   {favoriteCount}
@@ -180,12 +182,12 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
               ) : (
                 <ChevronRight className="w-3.5 h-3.5" />
               )}
-              知识空间
+              {t('nav.space')}
             </button>
             <button
               onClick={() => setShowCreateSpace(true)}
               className="p-1 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
-              title="创建知识空间"
+              title={t('nav.createSpace')}
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -202,7 +204,7 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
                 }`}
               >
                 <FolderOpen className="w-4 h-4 shrink-0" />
-                <span className="flex-1 text-left truncate">全部</span>
+                <span className="flex-1 text-left truncate">{t('nav.all')}</span>
                 <span className="text-xs text-white/40">{cards.length}</span>
               </button>
 
@@ -366,7 +368,7 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
           className={`nav-item ${location.pathname === '/settings' ? 'active' : ''}`}
         >
           <Settings className="w-5 h-5" />
-          <span className="flex-1">系统设置</span>
+          <span className="flex-1">{t('nav.settings')}</span>
         </NavLink>
 
         <div className="glass-card p-4">
@@ -378,8 +380,8 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
               <p className="text-sm text-white font-medium">{cards.length}</p>
               <p className="text-xs text-white/50">
                 {activeSpaceId
-                  ? knowledgeSpaces.find((s) => s.id === activeSpaceId)?.name || '知识卡片'
-                  : '全部卡片'}
+                  ? knowledgeSpaces.find((s) => s.id === activeSpaceId)?.name || t('nav.cards')
+                  : t('sidebar.totalCards')}
               </p>
             </div>
           </div>

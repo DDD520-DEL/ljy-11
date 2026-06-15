@@ -20,11 +20,13 @@ import {
   Star,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useI18n } from '../i18n';
 import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { zhCN, enUS } from 'date-fns/locale';
 
 export default function CardListPage() {
   const navigate = useNavigate();
+  const { t, language } = useI18n();
   const {
     cards,
     links,
@@ -54,6 +56,8 @@ export default function CardListPage() {
   const [tagInput, setTagInput] = useState('');
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  const dateLocale = language === 'zh-CN' ? zhCN : enUS;
 
   useEffect(() => {
     setSortBy(currentSettings.defaultCardSortBy || 'updatedAt');
@@ -217,10 +221,10 @@ export default function CardListPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-4xl font-bold text-white mb-2">
-            知识卡片
+            {t('cards.title')}
           </h1>
           <p className="text-white/60">
-            共 {cards.length} 张卡片，{filteredCards.length} 个结果
+            {t('cards.subtitle')} {cards.length} {t('cards.subtitle2')}，{filteredCards.length} {t('cards.results')}
             {activeSpaceId && knowledgeSpaces.find((s) => s.id === activeSpaceId) && (
               <span className="ml-2 text-amber-gold">
                 · {knowledgeSpaces.find((s) => s.id === activeSpaceId)!.icon} {knowledgeSpaces.find((s) => s.id === activeSpaceId)!.name}
@@ -245,14 +249,14 @@ export default function CardListPage() {
               className="btn-secondary flex items-center gap-2"
             >
               <CheckSquare className="w-4 h-4" />
-              批量操作
+              {t('cards.batch')}
             </button>
             <button
               onClick={() => navigate('/cards/new')}
               className="btn-primary flex items-center gap-2"
             >
               <Plus className="w-5 h-5" />
-              新卡片
+              {t('cards.new')}
             </button>
           </div>
         )}
@@ -273,7 +277,7 @@ export default function CardListPage() {
                     已选择 {selectedCardIds.length} 张卡片
                   </span>
                   <span className="text-white/40 text-sm">
-                    (共 {filteredCards.length} 个结果)
+                    (共 {filteredCards.length} {t('cards.results')})
                   </span>
                 </div>
                 <button
@@ -346,7 +350,7 @@ export default function CardListPage() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
             <input
               type="text"
-              placeholder="搜索卡片标题、内容或标签..."
+              placeholder={t('cards.search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="input-field pl-12"
@@ -357,10 +361,10 @@ export default function CardListPage() {
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
             className="input-field w-auto"
           >
-            <option value="updatedAt">最近更新</option>
-            <option value="createdAt">创建时间</option>
-            <option value="title">标题排序</option>
-            <option value="links">关联数量</option>
+            <option value="updatedAt">{t('cards.sort.recent')}</option>
+            <option value="createdAt">{t('cards.sort.created')}</option>
+            <option value="title">{t('cards.sort.title')}</option>
+            <option value="links">{t('cards.sort.links')}</option>
           </select>
         </div>
 
@@ -429,7 +433,7 @@ export default function CardListPage() {
                   <button
                     onClick={(e) => handleToggleFavorite(card.id, e)}
                     className="absolute top-4 right-4 z-10 p-1.5 rounded-lg hover:bg-white/10 transition-colors"
-                    title={card.isFavorite ? '取消收藏' : '添加收藏'}
+                    title={card.isFavorite ? t('cards.removeFavorite') : t('cards.addFavorite')}
                   >
                     <Star
                       className={`w-5 h-5 transition-all duration-200 ${
@@ -484,7 +488,7 @@ export default function CardListPage() {
                   <span className="text-xs text-white/40">
                     {formatDistanceToNow(card.updatedAt, {
                       addSuffix: true,
-                      locale: zhCN,
+                      locale: dateLocale,
                     })}
                   </span>
                 </div>

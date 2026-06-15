@@ -1,4 +1,28 @@
-import { Card, Link, ReviewHistory, ReadingRecord, Achievement, AchievementType, LearningDay, StreakInfo, WeeklyReport } from '../types';
+import { Card, Link, ReviewHistory, ReadingRecord, Achievement, AchievementType, LearningDay, StreakInfo, WeeklyReport, TimeRange } from '../types';
+
+export function getTimeRangeDates(range: TimeRange): { start: Date; end: Date; days: number } {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  if (range === 'week') {
+    const day = now.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    const start = new Date(now);
+    start.setDate(start.getDate() + mondayOffset);
+    const days = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return { start, end: now, days };
+  }
+
+  if (range === 'month') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const days = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return { start, end: now, days };
+  }
+
+  const start = new Date(now);
+  start.setDate(start.getDate() - 29);
+  return { start, end: now, days: 30 };
+}
 
 const STOPWORDS = new Set([
   '的', '了', '和', '是', '在', '我', '有', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去',
@@ -237,7 +261,7 @@ export function getConsecutiveDaysWithoutReview(
   );
 
   let consecutiveDays = 0;
-  let checkDate = new Date(today);
+  const checkDate = new Date(today);
 
   while (true) {
     const dateStr = checkDate.toISOString().split('T')[0];
@@ -724,4 +748,185 @@ export function formatWeeklyReportMarkdown(report: WeeklyReport): string {
   md += `*由知识库应用自动生成*\n`;
 
   return md;
+}
+
+function getPreviousPeriodDates(range: TimeRange): { start: Date; end: Date } {
+  const current = getTimeRangeDates(range);
+  const durationMs = current.end.getTime() - current.start.getTime();
+  const prevEnd = new Date(current.start.getTime() - 1);
+  prevEnd.setHours(23, 59, 59, 999);
+  const prevStart = new Date(prevEnd.getTime() - durationMs);
+  prevStart.setHours(0, 0, 0, 0);
+  return { start: prevStart, end: prevEnd };
+}
+
+export function getCardsPeriodComparison(cards: Card[], range: TimeRange): PeriodComparison {
+  const current = getTimeRangeDates(range);
+  const previous = getPreviousPeriodDates(range);
+  const currentStartKey = getDateKey(current.start);
+  const currentEndKey = getDateKey(current.end);
+  const prevStartKey = getDateKey(previous.start);
+  const prevEndKey = getDateKey(previous.end);
+
+  let currentCount = 0;
+  let previousCount = 0;
+
+  cards.forEach((card) => {
+    const dateKey = getDateKey(new Date(card.createdAt));
+    if (dateKey >= currentStartKey && dateKey <= currentEndKey) {
+      currentCount++;
+    }
+    if (dateKey >= prevStartKey && dateKey <= prevEndKey) {
+      previousCount++;
+    }
+  });
+
+  const changePercent =
+    previousCount === 0
+      ? currentCount > 0 ? 100 : 0
+      : Math.round(((currentCount - previousCount) / previousCount) * 100);
+
+  return {
+    currentPeriod: currentCount,
+    previousPeriod: previousCount,
+    changePercent,
+    isPositive: changePercent >= 0,
+  };
+}
+
+export function getLinksPeriodComparison(links: Link[], range: TimeRange): PeriodComparison {
+  const current = getTimeRangeDates(range);
+  const previous = getPreviousPeriodDates(range);
+  const currentStartKey = getDateKey(current.start);
+  const currentEndKey = getDateKey(current.end);
+  const prevStartKey = getDateKey(previous.start);
+  const prevEndKey = getDateKey(previous.end);
+
+  let currentCount = 0;
+  let previousCount = 0;
+
+  links.forEach((link) => {
+    const dateKey = getDateKey(new Date(link.createdAt));
+    if (dateKey >= currentStartKey && dateKey <= currentEndKey) {
+      currentCount++;
+    }
+    if (dateKey >= prevStartKey && dateKey <= prevEndKey) {
+      previousCount++;
+    }
+  });
+
+  const changePercent =
+    previousCount === 0
+      ? currentCount > 0 ? 100 : 0
+      : Math.round(((currentCount - previousCount) / previousCount) * 100);
+
+  return {
+    currentPeriod: currentCount,
+    previousPeriod: previousCount,
+    changePercent,
+    isPositive: changePercent >= 0,
+  };
+}
+
+export function getReadingTimePeriodComparison(
+  readingRecords: ReadingRecord[],
+  range: TimeRange
+): PeriodComparison {
+  const current = getTimeRangeDates(range);
+  const previous = getPreviousPeriodDates(range);
+  const currentStartKey = getDateKey(current.start);
+  const currentEndKey = getDateKey(current.end);
+  const prevStartKey = getDateKey(previous.start);
+  const prevEndKey = getDateKey(previous.end);
+
+  let currentSeconds = 0;
+  let previousSeconds = 0;
+
+  readingRecords.forEach((record) => {
+    const dateKey = getDateKey(new Date(record.startTime));
+    if (dateKey >= currentStartKey && dateKey <= currentEndKey) {
+      currentSeconds += record.duration;
+    }
+    if (dateKey >= prevStartKey && dateKey <= prevEndKey) {
+      previousSeconds += record.duration;
+    }
+  });
+
+  const changePercent =
+    previousSeconds === 0
+      ? currentSeconds > 0 ? 100 : 0
+      : Math.round(((currentSeconds - previousSeconds) / previousSeconds) * 100);
+
+  return {
+    currentPeriod: currentSeconds,
+    previousPeriod: previousSeconds,
+    changePercent,
+    isPositive: changePercent >= 0,
+  };
+}
+
+export function getActiveDaysInRange(
+  readingRecords: ReadingRecord[],
+  reviewHistories: ReviewHistory[],
+  range: TimeRange
+): number {
+  const { start, end } = getTimeRangeDates(range);
+  const startKey = getDateKey(start);
+  const endKey = getDateKey(end);
+  const learningDays = getLearningDays(readingRecords, reviewHistories);
+  const activeDays = getActiveDays(learningDays);
+  let count = 0;
+  activeDays.forEach((date) => {
+    if (date >= startKey && date <= endKey) {
+      count++;
+    }
+  });
+  return count;
+}
+
+export function getReadingDurationInRange(
+  readingRecords: ReadingRecord[],
+  range: TimeRange
+): number {
+  const { start, end } = getTimeRangeDates(range);
+  const startKey = getDateKey(start);
+  const endKey = getDateKey(end);
+  return readingRecords
+    .filter((r) => {
+      const dateKey = getDateKey(new Date(r.startTime));
+      return dateKey >= startKey && dateKey <= endKey;
+    })
+    .reduce((sum, r) => sum + r.duration, 0);
+}
+
+export function getReviewCompletionRate(
+  cards: Card[],
+  reviewHistories: ReviewHistory[],
+  range: TimeRange
+): number {
+  const { start, end } = getTimeRangeDates(range);
+  const startKey = getDateKey(start);
+  const endKey = getDateKey(end);
+
+  const now = new Date();
+  const cardsNeedingReview = cards.filter((card) => {
+    if (!card.lastReviewedAt) return true;
+    const daysSinceReview =
+      (now.getTime() - card.lastReviewedAt.getTime()) / (1000 * 60 * 60 * 24);
+    return daysSinceReview >= card.reviewInterval;
+  });
+
+  const reviewedInPeriod = new Set(
+    reviewHistories
+      .filter((h) => {
+        const dateKey = getDateKey(new Date(h.reviewDate));
+        return dateKey >= startKey && dateKey <= endKey;
+      })
+      .map((h) => h.cardId)
+  );
+
+  const totalReviewableCards = reviewedInPeriod.size + cardsNeedingReview.length;
+  return totalReviewableCards > 0
+    ? Math.round((reviewedInPeriod.size / totalReviewableCards) * 100)
+    : 100;
 }

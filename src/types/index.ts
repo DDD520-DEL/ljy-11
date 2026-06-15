@@ -1,3 +1,5 @@
+export type TimeRange = 'week' | 'month' | 'last30';
+
 export interface Card {
   id: string;
   title: string;

@@ -15,12 +15,12 @@ import {
   AlertTriangle,
   CheckCircle2,
   Calendar,
-  Settings,
   X,
   Flame,
   Trophy,
   BarChart3,
   Star,
+  Target,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -29,18 +29,38 @@ import {
   getReviewStatsByDay,
   getConsecutiveDaysWithoutReview,
   getTodayReviewedCount,
-  getCardsWeekOverWeek,
-  getLinksWeekOverWeek,
-  getReadingTimeWeekOverWeek,
   getReviewQueueDayOverDay,
   ACHIEVEMENT_DEFINITIONS,
-  getLearningDays,
-  getActiveDays,
+  getTimeRangeDates,
+  getCardsPeriodComparison,
+  getLinksPeriodComparison,
+  getReadingTimePeriodComparison,
+  getActiveDaysInRange,
+  getReadingDurationInRange,
+  getReviewCompletionRate,
 } from '../utils/algorithm';
 import { useNotification } from '../hooks/useNotification';
-import { AchievementType } from '../types';
+import { AchievementType, TimeRange } from '../types';
 import WeeklyReportModal from '../components/WeeklyReportModal';
 import DailyDiscovery from '../components/DailyDiscovery';
+
+const TIME_RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
+  { value: 'week', label: '本周' },
+  { value: 'month', label: '本月' },
+  { value: 'last30', label: '近30天' },
+];
+
+const TIME_RANGE_PERIOD_LABELS: Record<TimeRange, string> = {
+  week: '较上周',
+  month: '较上月',
+  last30: '较前30天',
+};
+
+const TIME_RANGE_TREND_LABELS: Record<TimeRange, string> = {
+  week: '最近 7 天',
+  month: '本月',
+  last30: '最近 30 天',
+};
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -68,32 +88,21 @@ export default function DashboardPage() {
 
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showWeeklyReport, setShowWeeklyReport] = useState(false);
+  const [timeRange, setTimeRange] = useState<TimeRange>('week');
 
   const reviewQueue = getReviewQueue();
   const heatmap = getReadingHeatmap();
   const streakInfo = getStreakInfo();
-  const totalReadingTime = readingRecords.reduce((sum, r) => sum + r.duration, 0);
-  const reviewStats = getReviewStatsByDay(reviewHistories, 7);
+  const rangeInfo = getTimeRangeDates(timeRange);
+  const reviewStats = getReviewStatsByDay(reviewHistories, rangeInfo.days);
   const consecutiveDaysOff = getConsecutiveDaysWithoutReview(reviewHistories);
   const todayReviewed = getTodayReviewedCount(reviewHistories);
-  const maxReviewedInWeek = Math.max(...reviewStats.map((s) => s.reviewed), 1);
+  const maxReviewedInRange = Math.max(...reviewStats.map((s) => s.reviewed), 1);
   const favoriteCards = getFavoriteCards();
 
-  const weekActiveDays = (() => {
-    const learningDays = getLearningDays(readingRecords, reviewHistories);
-    const activeDays = getActiveDays(learningDays);
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 6);
-    weekAgo.setHours(0, 0, 0, 0);
-    const cutoffStr = format(weekAgo, 'yyyy-MM-dd');
-    let count = 0;
-    activeDays.forEach((date) => {
-      if (date >= cutoffStr) {
-        count++;
-      }
-    });
-    return count;
-  })();
+  const activeDaysInRange = getActiveDaysInRange(readingRecords, reviewHistories, timeRange);
+  const readingDurationInRange = getReadingDurationInRange(readingRecords, timeRange);
+  const reviewCompletionRate = getReviewCompletionRate(cards, reviewHistories, timeRange);
 
   useEffect(() => {
     if (newlyUnlockedAchievements.length > 0) {
@@ -104,12 +113,19 @@ export default function DashboardPage() {
     }
   }, [newlyUnlockedAchievements, clearNewAchievements]);
 
-  const cardsGrowth = getCardsWeekOverWeek(cards);
-  const linksGrowth = getLinksWeekOverWeek(links);
-  const readingGrowth = getReadingTimeWeekOverWeek(readingRecords);
+  const cardsGrowth = getCardsPeriodComparison(cards, timeRange);
+  const linksGrowth = getLinksPeriodComparison(links, timeRange);
+  const readingGrowth = getReadingTimePeriodComparison(readingRecords, timeRange);
   const reviewGrowth = getReviewQueueDayOverDay(cards);
 
-  const recentCards = cards.slice(0, 5);
+  const periodLabel = TIME_RANGE_PERIOD_LABELS[timeRange];
+
+  const recentCards = cards
+    .filter((card) => {
+      const dateKey = new Date(card.createdAt).toISOString().split('T')[0];
+      return dateKey >= rangeInfo.start.toISOString().split('T')[0];
+    })
+    .slice(0, 5);
 
   const showStreakWarning = consecutiveDaysOff >= 2 && reviewQueue.length > 0;
 
@@ -121,12 +137,12 @@ export default function DashboardPage() {
   const stats = [
     {
       icon: FileText,
-      label: '知识卡片',
-      value: cards.length,
+      label: '新增卡片',
+      value: cardsGrowth.currentPeriod,
       color: 'from-amber-gold to-amber-gold-light',
       change: formatGrowth(cardsGrowth),
       growth: cardsGrowth,
-      periodLabel: '较上周',
+      periodLabel,
     },
     {
       icon: Star,
@@ -140,12 +156,21 @@ export default function DashboardPage() {
     },
     {
       icon: Network,
-      label: '知识关联',
-      value: links.length,
+      label: '新增关联',
+      value: linksGrowth.currentPeriod,
       color: 'from-blue-500 to-cyan-500',
       change: formatGrowth(linksGrowth),
       growth: linksGrowth,
-      periodLabel: '较上周',
+      periodLabel,
+    },
+    {
+      icon: Target,
+      label: '复习完成率',
+      value: `${reviewCompletionRate}%`,
+      color: 'from-emerald-mastered to-teal-500',
+      change: reviewCompletionRate >= 80 ? '表现优秀' : reviewCompletionRate >= 50 ? '继续加油' : '需加强',
+      growth: { changePercent: 0, isPositive: reviewCompletionRate >= 50 },
+      periodLabel: TIME_RANGE_TREND_LABELS[timeRange],
     },
     {
       icon: Flame,
@@ -158,21 +183,12 @@ export default function DashboardPage() {
     },
     {
       icon: Clock,
-      label: '本周学习',
-      value: `${Math.floor(streakInfo.weekDuration / 60)}分钟`,
-      color: 'from-emerald-mastered to-teal-500',
-      change: `${weekActiveDays}天活跃`,
-      growth: { changePercent: 0, isPositive: true },
-      periodLabel: '活跃天数',
-    },
-    {
-      icon: BookOpen,
-      label: '总阅读时长',
-      value: `${Math.floor(totalReadingTime / 60)}分钟`,
+      label: '期间学习',
+      value: `${Math.floor(readingDurationInRange / 60)}分钟`,
       color: 'from-purple-500 to-indigo-500',
-      change: formatGrowth(readingGrowth),
+      change: `${activeDaysInRange}天活跃`,
       growth: readingGrowth,
-      periodLabel: '较上周',
+      periodLabel: formatGrowth(readingGrowth),
     },
     {
       icon: TrendingUp,
@@ -207,7 +223,7 @@ export default function DashboardPage() {
       animate="show"
       className="space-y-8"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="font-display text-4xl font-bold text-white mb-2">
             欢迎回来，探索者
@@ -217,6 +233,21 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex items-center bg-white/5 rounded-xl p-1 gap-1">
+            {TIME_RANGE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setTimeRange(option.value)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  timeRange === option.value
+                    ? 'bg-amber-gold text-white shadow-lg shadow-amber-gold/25'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
           <button
             onClick={() => setShowWeeklyReport(true)}
             className="p-3 rounded-xl transition-all duration-300 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white flex items-center gap-2"
@@ -320,6 +351,7 @@ export default function DashboardPage() {
       </AnimatePresence>
 
       <motion.div
+        key={timeRange}
         variants={container}
         initial="hidden"
         animate="show"
@@ -371,7 +403,7 @@ export default function DashboardPage() {
           <motion.div variants={item} className="glass-card p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="font-display text-2xl font-bold text-white">
-                最近更新
+                {timeRange === 'week' ? '本周更新' : timeRange === 'month' ? '本月更新' : '近期更新'}
               </h2>
               <button
                 onClick={() => navigate('/cards')}
@@ -494,26 +526,29 @@ export default function DashboardPage() {
                 <Calendar className="w-5 h-5 text-amber-gold" />
                 复习趋势
               </h3>
-              <span className="text-xs text-white/50">最近 7 天</span>
+              <span className="text-xs text-white/50">{TIME_RANGE_TREND_LABELS[timeRange]}</span>
             </div>
             <div className="flex items-end justify-between h-28 gap-1">
               {reviewStats.map((stat, index) => {
-                const height = maxReviewedInWeek > 0
-                  ? (stat.reviewed / maxReviewedInWeek) * 100
+                const height = maxReviewedInRange > 0
+                  ? (stat.reviewed / maxReviewedInRange) * 100
                   : 0;
                 const isToday = index === reviewStats.length - 1;
+                const showLabel = timeRange === 'last30'
+                  ? index % 5 === 0 || isToday
+                  : true;
                 return (
                   <div key={stat.date} className="flex-1 flex flex-col items-center gap-2">
                     <span className={`text-xs font-medium ${
                       isToday ? 'text-amber-gold' : 'text-white/60'
                     }`}>
-                      {stat.reviewed}
+                      {stat.reviewed > 0 ? stat.reviewed : ''}
                     </span>
                     <div className="w-full flex-1 flex items-end">
                       <motion.div
                         initial={{ height: 0 }}
                         animate={{ height: `${Math.max(height, 5)}%` }}
-                        transition={{ delay: index * 0.05, duration: 0.5 }}
+                        transition={{ delay: index * 0.02, duration: 0.5 }}
                         className={`w-full rounded-t-sm ${
                           isToday
                             ? 'bg-gradient-to-t from-amber-gold to-amber-gold-light'
@@ -523,17 +558,21 @@ export default function DashboardPage() {
                         }`}
                       />
                     </div>
-                    <span className={`text-xs ${
-                      isToday ? 'text-amber-gold font-medium' : 'text-white/40'
-                    }`}>
-                      {format(new Date(stat.date), 'EEE', { locale: zhCN })}
-                    </span>
+                    {showLabel && (
+                      <span className={`text-xs ${
+                        isToday ? 'text-amber-gold font-medium' : 'text-white/40'
+                      }`}>
+                        {timeRange === 'last30'
+                          ? format(new Date(stat.date), 'd')
+                          : format(new Date(stat.date), 'EEE', { locale: zhCN })}
+                      </span>
+                    )}
                   </div>
                 );
               })}
             </div>
             <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between text-sm">
-              <span className="text-white/50">本周总计</span>
+              <span className="text-white/50">{TIME_RANGE_TREND_LABELS[timeRange]}总计</span>
               <span className="text-white font-medium">
                 {reviewStats.reduce((sum, s) => sum + s.reviewed, 0)} 次复习
               </span>
@@ -544,10 +583,12 @@ export default function DashboardPage() {
             <h3 className="font-display text-lg font-bold text-white mb-4">
               阅读活跃度
             </h3>
-            <div className="grid grid-cols-7 gap-1">
-              {Array.from({ length: 28 }).map((_, i) => {
-                const date = new Date();
-                date.setDate(date.getDate() - (27 - i));
+            <div className={`grid gap-1 ${
+              timeRange === 'week' ? 'grid-cols-7' : timeRange === 'month' ? 'grid-cols-7' : 'grid-cols-6'
+            }`}>
+              {Array.from({ length: rangeInfo.days }).map((_, i) => {
+                const date = new Date(rangeInfo.start);
+                date.setDate(date.getDate() + i);
                 const dateStr = date.toISOString().split('T')[0];
                 const minutes = Math.floor((heatmap.get(dateStr) || 0) / 60);
                 const intensity = Math.min(minutes / 60, 1);
@@ -567,7 +608,7 @@ export default function DashboardPage() {
               })}
             </div>
             <div className="flex items-center justify-between mt-3 text-xs text-white/40">
-              <span>4周前</span>
+              <span>{format(rangeInfo.start, 'M/d')}</span>
               <div className="flex gap-1 items-center">
                 <span>少</span>
                 <div className="w-3 h-3 rounded-sm bg-white/10" />
@@ -576,7 +617,7 @@ export default function DashboardPage() {
                 <div className="w-3 h-3 rounded-sm bg-amber-gold" />
                 <span>多</span>
               </div>
-              <span>今天</span>
+              <span>{format(rangeInfo.end, 'M/d')}</span>
             </div>
           </div>
 

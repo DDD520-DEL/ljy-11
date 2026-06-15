@@ -21,7 +21,8 @@ import { GraphData, GraphNode } from '../types';
 export default function GraphPage() {
   const navigate = useNavigate();
   const graphRef = useRef<ForceGraphMethods>();
-  const { getGraphData, cards, activeSpaceId, knowledgeSpaces } = useStore();
+  const { getGraphData, cards, activeSpaceId, knowledgeSpaces, settings, getDefaultSettings } = useStore();
+  const currentSettings = settings || getDefaultSettings();
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -31,6 +32,22 @@ export default function GraphPage() {
   const lastClickRef = useRef<{ nodeId: string; time: number } | null>(null);
 
   const fullGraphData = getGraphData();
+
+  const limitedGraphData = useMemo(() => {
+    const limit = currentSettings.graphNodeLimit || 100;
+    if (fullGraphData.nodes.length <= limit) {
+      return fullGraphData;
+    }
+    const sortedNodes = [...fullGraphData.nodes].sort((a, b) => b.val - a.val);
+    const limitedNodes = sortedNodes.slice(0, limit);
+    const limitedNodeIds = new Set(limitedNodes.map(n => n.id));
+    const limitedLinks = fullGraphData.links.filter(link => {
+      const srcId = typeof link.source === 'object' ? (link.source as GraphNode).id : link.source;
+      const tgtId = typeof link.target === 'object' ? (link.target as GraphNode).id : link.target;
+      return limitedNodeIds.has(srcId) && limitedNodeIds.has(tgtId);
+    });
+    return { nodes: limitedNodes, links: limitedLinks };
+  }, [fullGraphData, currentSettings.graphNodeLimit]);
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -50,14 +67,14 @@ export default function GraphPage() {
 
   const filteredGraphData: GraphData = useMemo(() => {
     if (selectedFilterTags.length === 0 && !focusedNodeId) {
-      return fullGraphData;
+      return limitedGraphData;
     }
 
     const visibleNodeIds = new Set<string>();
 
     if (focusedNodeId) {
       visibleNodeIds.add(focusedNodeId);
-      fullGraphData.links.forEach((link) => {
+      limitedGraphData.links.forEach((link) => {
         const srcId = typeof link.source === 'object' ? (link.source as GraphNode).id : link.source;
         const tgtId = typeof link.target === 'object' ? (link.target as GraphNode).id : link.target;
         if (srcId === focusedNodeId) visibleNodeIds.add(tgtId);
@@ -67,14 +84,14 @@ export default function GraphPage() {
 
     if (selectedFilterTags.length > 0) {
       const tagMatchedIds = new Set<string>();
-      fullGraphData.nodes.forEach((node) => {
+      limitedGraphData.nodes.forEach((node) => {
         if (node.tags.some((t) => selectedFilterTags.includes(t))) {
           tagMatchedIds.add(node.id);
         }
       });
 
       const tagNeighborIds = new Set<string>();
-      fullGraphData.links.forEach((link) => {
+      limitedGraphData.links.forEach((link) => {
         const srcId = typeof link.source === 'object' ? (link.source as GraphNode).id : link.source;
         const tgtId = typeof link.target === 'object' ? (link.target as GraphNode).id : link.target;
         if (tagMatchedIds.has(srcId)) tagNeighborIds.add(tgtId);
@@ -94,7 +111,7 @@ export default function GraphPage() {
           if (visibleNodeIds.has(id)) filteredTagMatched.add(id);
         });
         const filteredNeighborIds = new Set<string>();
-        fullGraphData.links.forEach((link) => {
+        limitedGraphData.links.forEach((link) => {
           const srcId = typeof link.source === 'object' ? (link.source as GraphNode).id : link.source;
           const tgtId = typeof link.target === 'object' ? (link.target as GraphNode).id : link.target;
           if (filteredTagMatched.has(srcId) && visibleNodeIds.has(tgtId)) filteredNeighborIds.add(tgtId);
@@ -108,16 +125,16 @@ export default function GraphPage() {
       }
     }
 
-    const nodes = fullGraphData.nodes.filter((n) => visibleNodeIds.has(n.id));
+    const nodes = limitedGraphData.nodes.filter((n) => visibleNodeIds.has(n.id));
     const nodeIds = new Set(nodes.map((n) => n.id));
-    const links = fullGraphData.links.filter((link) => {
+    const links = limitedGraphData.links.filter((link) => {
       const srcId = typeof link.source === 'object' ? (link.source as GraphNode).id : link.source;
       const tgtId = typeof link.target === 'object' ? (link.target as GraphNode).id : link.target;
       return nodeIds.has(srcId) && nodeIds.has(tgtId);
     });
 
     return { nodes, links };
-  }, [fullGraphData, selectedFilterTags, focusedNodeId]);
+  }, [limitedGraphData, selectedFilterTags, focusedNodeId]);
 
   useEffect(() => {
     const updateDimensions = () => {

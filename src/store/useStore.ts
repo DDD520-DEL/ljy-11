@@ -21,6 +21,9 @@ import {
   CardRelations,
   ImportPreviewResult,
   ImportPreviewItem,
+  UserSettings,
+  CardSortBy,
+  Language,
 } from '../types';
 import { db } from '../db';
 import {
@@ -63,6 +66,7 @@ interface StoreState {
   cardTemplates: CardTemplate[];
   knowledgeSpaces: KnowledgeSpace[];
   activeSpaceId: string | null;
+  settings: UserSettings | null;
 
   initializeData: () => Promise<void>;
   loadAllData: () => Promise<void>;
@@ -131,6 +135,9 @@ interface StoreState {
   deleteSpace: (id: string) => Promise<void>;
   moveCardToSpace: (cardId: string, spaceId: string | null) => Promise<void>;
   getCardsBySpace: (spaceId: string | null) => Card[];
+
+  updateSettings: (updates: Partial<UserSettings>) => Promise<void>;
+  getDefaultSettings: () => UserSettings;
 }
 
 const generateId = () =>
@@ -153,6 +160,7 @@ export const useStore = create<StoreState>((set, get) => ({
   cardTemplates: [],
   knowledgeSpaces: [],
   activeSpaceId: null,
+  settings: null,
 
   initializeData: async () => {
     const cards = await db.cards.count();
@@ -168,7 +176,7 @@ export const useStore = create<StoreState>((set, get) => ({
 
   loadAllData: async () => {
     set({ isLoading: true });
-    const [cards, links, readingRecords, importSources, reviewHistories, cardVersions, achievements, cardTemplates, knowledgeSpaces] =
+    const [cards, links, readingRecords, importSources, reviewHistories, cardVersions, achievements, cardTemplates, knowledgeSpaces, settings] =
       await Promise.all([
         db.cards.orderBy('updatedAt').reverse().toArray(),
         db.links.toArray(),
@@ -179,6 +187,7 @@ export const useStore = create<StoreState>((set, get) => ({
         db.achievements.orderBy('unlockedAt').reverse().toArray(),
         db.cardTemplates.orderBy('updatedAt').reverse().toArray(),
         db.knowledgeSpaces.orderBy('updatedAt').reverse().toArray(),
+        db.settings.toArray(),
       ]);
     set({
       cards,
@@ -190,6 +199,7 @@ export const useStore = create<StoreState>((set, get) => ({
       achievements,
       cardTemplates,
       knowledgeSpaces,
+      settings: settings[0] || null,
       isLoading: false,
     });
   },
@@ -1506,5 +1516,33 @@ export const useStore = create<StoreState>((set, get) => ({
       return cards.filter((c) => !c.spaceId);
     }
     return cards.filter((c) => c.spaceId === spaceId);
+  },
+
+  getDefaultSettings: () => ({
+    id: 'default',
+    dailyReviewReminder: {
+      enabled: true,
+      time: '09:00',
+    },
+    defaultCardSortBy: 'updatedAt',
+    graphNodeLimit: 100,
+    language: 'zh-CN',
+    updatedAt: new Date(),
+  }),
+
+  updateSettings: async (updates) => {
+    const { settings, getDefaultSettings } = get();
+    const currentSettings = settings || getDefaultSettings();
+    const updatedSettings: UserSettings = {
+      ...currentSettings,
+      ...updates,
+      dailyReviewReminder: updates.dailyReviewReminder
+        ? { ...currentSettings.dailyReviewReminder, ...updates.dailyReviewReminder }
+        : currentSettings.dailyReviewReminder,
+      updatedAt: new Date(),
+    };
+
+    await db.settings.put(updatedSettings);
+    await get().loadAllData();
   },
 }));

@@ -12,6 +12,7 @@ import ReviewPage from './pages/ReviewPage';
 import TagsPage from './pages/TagsPage';
 import TemplatePage from './pages/TemplatePage';
 import FavoritesPage from './pages/FavoritesPage';
+import SettingsPage from './pages/SettingsPage';
 import { useStore } from './store/useStore';
 import { Loader2 } from 'lucide-react';
 
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/tags" element={<TagsPage />} />
           <Route path="/templates" element={<TemplatePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Layout>
     </Router>

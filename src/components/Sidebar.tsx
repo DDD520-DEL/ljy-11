@@ -21,6 +21,7 @@ import {
   Trash2,
   X,
   Check,
+  Settings,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { KnowledgeSpace } from '../types';
@@ -359,7 +360,15 @@ export function Sidebar({ onOpenSearch }: SidebarProps) {
         </div>
       </nav>
 
-      <div className="p-4 border-t border-white/10">
+      <div className="p-4 border-t border-white/10 space-y-3">
+        <NavLink
+          to="/settings"
+          className={`nav-item ${location.pathname === '/settings' ? 'active' : ''}`}
+        >
+          <Settings className="w-5 h-5" />
+          <span className="flex-1">系统设置</span>
+        </NavLink>
+
         <div className="glass-card p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-mastered to-teal-500 flex items-center justify-center">

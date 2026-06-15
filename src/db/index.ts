@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import { Card, Link, ReadingRecord, ImportSource, ReviewHistory, CardVersion, Achievement, CardTemplate, KnowledgeSpace } from '../types';
+import { Card, Link, ReadingRecord, ImportSource, ReviewHistory, CardVersion, Achievement, CardTemplate, KnowledgeSpace, UserSettings } from '../types';
 
 export class KnowledgeBaseDB extends Dexie {
   cards!: Table<Card, string>;
@@ -11,6 +11,7 @@ export class KnowledgeBaseDB extends Dexie {
   achievements!: Table<Achievement, string>;
   cardTemplates!: Table<CardTemplate, string>;
   knowledgeSpaces!: Table<KnowledgeSpace, string>;
+  settings!: Table<UserSettings, string>;
 
   constructor() {
     super('KnowledgeBaseDB');
@@ -100,6 +101,18 @@ export class KnowledgeBaseDB extends Dexie {
           card.customNextReviewDate = null;
         }
       });
+    });
+    this.version(8).stores({
+      cards: 'id, title, createdAt, updatedAt, lastReviewedAt, isFavorite, spaceId, reviewPriority',
+      links: 'id, sourceCardId, targetCardId, createdAt',
+      readingRecords: 'id, cardId, startTime, endTime, fromCardId',
+      importSources: 'id, type, importedAt, processed',
+      reviewHistories: 'id, cardId, reviewDate',
+      cardVersions: 'id, cardId, createdAt',
+      achievements: 'id, type, unlockedAt',
+      cardTemplates: 'id, name, createdAt, updatedAt',
+      knowledgeSpaces: 'id, name, createdAt, updatedAt',
+      settings: 'id, updatedAt',
     });
   }
 }

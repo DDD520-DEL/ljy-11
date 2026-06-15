@@ -40,8 +40,13 @@ export default function CardListPage() {
     activeSpaceId,
     knowledgeSpaces,
     moveCardToSpace,
+    settings,
+    getDefaultSettings,
   } = useStore();
-  const [sortBy, setSortBy] = useState<'updated' | 'created' | 'links'>('updated');
+  const currentSettings = settings || getDefaultSettings();
+
+  const [sortBy, setSortBy] = useState<'updatedAt' | 'createdAt' | 'title' | 'links'>(
+    currentSettings.defaultCardSortBy || 'updatedAt');
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -49,6 +54,10 @@ export default function CardListPage() {
   const [tagInput, setTagInput] = useState('');
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setSortBy(currentSettings.defaultCardSortBy || 'updatedAt');
+  }, [settings, currentSettings.defaultCardSortBy]);
 
   const exitMultiSelectMode = useCallback(() => {
     setIsMultiSelectMode(false);
@@ -94,10 +103,12 @@ export default function CardListPage() {
       );
     }
 
-    if (sortBy === 'updated') {
+    if (sortBy === 'updatedAt') {
       result.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-    } else if (sortBy === 'created') {
+    } else if (sortBy === 'createdAt') {
       result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    } else if (sortBy === 'title') {
+      result.sort((a, b) => a.title.localeCompare(b.title, 'zh-CN'));
     } else if (sortBy === 'links') {
       result.sort((a, b) => {
         const aLinks = links.filter(
@@ -346,8 +357,9 @@ export default function CardListPage() {
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
             className="input-field w-auto"
           >
-            <option value="updated">最近更新</option>
-            <option value="created">创建时间</option>
+            <option value="updatedAt">最近更新</option>
+            <option value="createdAt">创建时间</option>
+            <option value="title">标题排序</option>
             <option value="links">关联数量</option>
           </select>
         </div>

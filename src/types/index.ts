@@ -1,5 +1,21 @@
 export type TimeRange = 'week' | 'month' | 'last30';
 
+export type CardSortBy = 'updatedAt' | 'createdAt' | 'title';
+
+export type Language = 'zh-CN' | 'en-US';
+
+export interface UserSettings {
+  id: string;
+  dailyReviewReminder: {
+    enabled: boolean;
+    time: string;
+  };
+  defaultCardSortBy: CardSortBy;
+  graphNodeLimit: number;
+  language: Language;
+  updatedAt: Date;
+}
+
 export type ReviewPriorityLevel = 'high' | 'medium' | 'low';
 
 export interface Card {

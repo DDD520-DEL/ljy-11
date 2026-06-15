@@ -130,6 +130,27 @@ export interface WeeklyReport {
   currentStreak: number;
 }
 
+export interface RelationNode {
+  cardId: string;
+  cardTitle: string;
+  relationType: 'outgoing' | 'incoming' | 'second-order';
+  direction?: 'forward' | 'backward';
+  path: string[];
+  depth: number;
+  tagColor: string;
+  tags: string[];
+}
+
+export interface CardRelations {
+  currentCardId: string;
+  currentCardTitle: string;
+  firstOrder: {
+    outgoing: RelationNode[];
+    incoming: RelationNode[];
+  };
+  secondOrder: RelationNode[];
+}
+
 export type AchievementType = 'streak_7' | 'streak_30' | 'streak_100';
 
 export interface StreakInfo {

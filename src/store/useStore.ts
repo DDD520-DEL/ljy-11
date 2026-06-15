@@ -17,6 +17,8 @@ import {
   WeeklyReport,
   CardTemplate,
   KnowledgeSpace,
+  RelationNode,
+  CardRelations,
 } from '../types';
 import { db } from '../db';
 import {
@@ -88,6 +90,7 @@ interface StoreState {
   processImport: (importId: string, createCard: boolean) => Promise<void>;
 
   getGraphData: () => GraphData;
+  getCardRelations: (cardId: string) => CardRelations;
 
   exportToJSON: () => string;
   exportToMarkdown: () => string;
@@ -708,6 +711,173 @@ export const useStore = create<StoreState>((set, get) => ({
       }));
 
     return { nodes, links: graphLinks };
+  },
+
+  getCardRelations: (cardId) => {
+    const { cards, links } = get();
+    const currentCard = cards.find((c) => c.id === cardId);
+    if (!currentCard) {
+      return {
+        currentCardId: cardId,
+        currentCardTitle: '',
+        firstOrder: { outgoing: [], incoming: [] },
+        secondOrder: [],
+      };
+    }
+
+    const tagColors = [
+      '#f59e0b',
+      '#10b981',
+      '#3b82f6',
+      '#ef4444',
+      '#8b5cf6',
+      '#ec4899',
+      '#06b6d4',
+      '#f97316',
+    ];
+
+    const allTags = new Set(cards.flatMap((c) => c.tags));
+    const tagColorMap = new Map(
+      Array.from(allTags).map((tag, i) => [tag, tagColors[i % tagColors.length]])
+    );
+
+    const getTagColor = (card: Card) => {
+      return card.tags[0] ? tagColorMap.get(card.tags[0]) || '#6b7280' : '#6b7280';
+    };
+
+    const createRelationNode = (
+      card: Card,
+      relationType: 'outgoing' | 'incoming' | 'second-order',
+      path: string[],
+      depth: number,
+      direction?: 'forward' | 'backward'
+    ): RelationNode => ({
+      cardId: card.id,
+      cardTitle: card.title,
+      relationType,
+      direction,
+      path,
+      depth,
+      tagColor: getTagColor(card),
+      tags: card.tags,
+    });
+
+    const outgoingLinks = links.filter((l) => l.sourceCardId === cardId);
+    const incomingLinks = links.filter((l) => l.targetCardId === cardId);
+
+    const outgoingNodes: RelationNode[] = outgoingLinks.map((link) => {
+      const targetCard = cards.find((c) => c.id === link.targetCardId);
+      return targetCard
+        ? createRelationNode(targetCard, 'outgoing', [cardId, targetCard.id], 1, 'forward')
+        : null;
+    }).filter((n): n is RelationNode => n !== null);
+
+    const incomingNodes: RelationNode[] = incomingLinks.map((link) => {
+      const sourceCard = cards.find((c) => c.id === link.sourceCardId);
+      return sourceCard
+        ? createRelationNode(sourceCard, 'incoming', [sourceCard.id, cardId], 1, 'backward')
+        : null;
+    }).filter((n): n is RelationNode => n !== null);
+
+    const firstOrderIds = new Set([
+      cardId,
+      ...outgoingNodes.map((n) => n.cardId),
+      ...incomingNodes.map((n) => n.cardId),
+    ]);
+
+    const secondOrderMap = new Map<string, RelationNode>();
+
+    outgoingNodes.forEach((firstNode) => {
+      const firstOutgoing = links.filter(
+        (l) => l.sourceCardId === firstNode.cardId && !firstOrderIds.has(l.targetCardId)
+      );
+      const firstIncoming = links.filter(
+        (l) => l.targetCardId === firstNode.cardId && !firstOrderIds.has(l.sourceCardId)
+      );
+
+      firstOutgoing.forEach((link) => {
+        const targetCard = cards.find((c) => c.id === link.targetCardId);
+        if (targetCard && !secondOrderMap.has(targetCard.id)) {
+          secondOrderMap.set(
+            targetCard.id,
+            createRelationNode(
+              targetCard,
+              'second-order',
+              [cardId, firstNode.cardId, targetCard.id],
+              2,
+              'forward'
+            )
+          );
+        }
+      });
+
+      firstIncoming.forEach((link) => {
+        const sourceCard = cards.find((c) => c.id === link.sourceCardId);
+        if (sourceCard && !secondOrderMap.has(sourceCard.id)) {
+          secondOrderMap.set(
+            sourceCard.id,
+            createRelationNode(
+              sourceCard,
+              'second-order',
+              [sourceCard.id, firstNode.cardId, cardId],
+              2,
+              'backward'
+            )
+          );
+        }
+      });
+    });
+
+    incomingNodes.forEach((firstNode) => {
+      const firstOutgoing = links.filter(
+        (l) => l.sourceCardId === firstNode.cardId && !firstOrderIds.has(l.targetCardId)
+      );
+      const firstIncoming = links.filter(
+        (l) => l.targetCardId === firstNode.cardId && !firstOrderIds.has(l.sourceCardId)
+      );
+
+      firstOutgoing.forEach((link) => {
+        const targetCard = cards.find((c) => c.id === link.targetCardId);
+        if (targetCard && !secondOrderMap.has(targetCard.id)) {
+          secondOrderMap.set(
+            targetCard.id,
+            createRelationNode(
+              targetCard,
+              'second-order',
+              [cardId, firstNode.cardId, targetCard.id],
+              2,
+              'forward'
+            )
+          );
+        }
+      });
+
+      firstIncoming.forEach((link) => {
+        const sourceCard = cards.find((c) => c.id === link.sourceCardId);
+        if (sourceCard && !secondOrderMap.has(sourceCard.id)) {
+          secondOrderMap.set(
+            sourceCard.id,
+            createRelationNode(
+              sourceCard,
+              'second-order',
+              [sourceCard.id, firstNode.cardId, cardId],
+              2,
+              'backward'
+            )
+          );
+        }
+      });
+    });
+
+    return {
+      currentCardId: cardId,
+      currentCardTitle: currentCard.title,
+      firstOrder: {
+        outgoing: outgoingNodes,
+        incoming: incomingNodes,
+      },
+      secondOrder: Array.from(secondOrderMap.values()),
+    };
   },
 
   exportToJSON: () => {

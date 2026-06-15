@@ -17,6 +17,7 @@ import {
 import { useStore } from '../store/useStore';
 import { MarkdownViewer } from '../components/MarkdownViewer';
 import CardVersionHistory from '../components/CardVersionHistory';
+import CardRelationPanel from '../components/CardRelationPanel';
 import { TemplateSelector } from '../components/TemplateSelector';
 import { MarkdownToolbar, ViewMode, MarkdownAction } from '../components/MarkdownToolbar';
 import { insertMarkdown } from '../utils/markdownEditor';
@@ -491,6 +492,10 @@ export default function CardEditorPage() {
         </motion.div>
 
         <motion.div variants={item} className="space-y-4">
+          {!isNew && existingCard && (
+            <CardRelationPanel cardId={existingCard.id} />
+          )}
+
           <div className="glass-card p-6">
             <h3 className="font-display text-lg font-bold text-white mb-4 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-amber-gold" />

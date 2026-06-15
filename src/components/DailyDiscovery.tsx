@@ -14,10 +14,10 @@ import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 
-function getContentSummary(content: string, maxLength: number = 150): string {
+export function getContentSummary(content: string, maxLength: number = 150): string {
   const cleanContent = content
     .replace(/!\[.*?\]\(.*?\)/g, '')
-    .replace(/\[.*?\]\(.*?\)/g, '$1')
+    .replace(/\[(.*?)\]\(.*?\)/g, '$1')
     .replace(/#{1,6}\s/g, '')
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/\*(.*?)\*/g, '$1')

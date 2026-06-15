@@ -1,4 +1,4 @@
-import { Card, Link, ReviewHistory, ReadingRecord, Achievement, AchievementType, LearningDay, StreakInfo, WeeklyReport, TimeRange, ReviewPriorityLevel } from '../types';
+import { Card, Link, ReviewHistory, ReadingRecord, Achievement, AchievementType, LearningDay, StreakInfo, WeeklyReport, TimeRange, ReviewPriorityLevel, DuplicateCandidate } from '../types';
 
 export function getTimeRangeDates(range: TimeRange): { start: Date; end: Date; days: number } {
   const now = new Date();
@@ -932,4 +932,92 @@ export function getReviewCompletionRate(
   return totalReviewableCards > 0
     ? Math.round((reviewedInPeriod.size / totalReviewableCards) * 100)
     : 100;
+}
+
+export function levenshteinDistance(str1: string, str2: string): number {
+  const s1 = str1.toLowerCase();
+  const s2 = str2.toLowerCase();
+  const m = s1.length;
+  const n = s2.length;
+
+  if (m === 0) return n;
+  if (n === 0) return m;
+
+  const dp: number[][] = Array(m + 1)
+    .fill(null)
+    .map(() => Array(n + 1).fill(0));
+
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost
+      );
+    }
+  }
+
+  return dp[m][n];
+}
+
+export function levenshteinSimilarity(str1: string, str2: string): number {
+  const maxLen = Math.max(str1.length, str2.length);
+  if (maxLen === 0) return 1;
+  const distance = levenshteinDistance(str1, str2);
+  return 1 - distance / maxLen;
+}
+
+export function jaccardSimilarity(str1: string, str2: string): number {
+  const tokens1 = new Set(tokenizeWithFilter(str1));
+  const tokens2 = new Set(tokenizeWithFilter(str2));
+
+  if (tokens1.size === 0 && tokens2.size === 0) return 0;
+
+  const intersection = new Set([...tokens1].filter((x) => tokens2.has(x)));
+  const union = new Set([...tokens1, ...tokens2]);
+
+  return intersection.size / union.size;
+}
+
+export function calculateTitleSimilarity(title1: string, title2: string): number {
+  const t1 = title1.trim().toLowerCase();
+  const t2 = title2.trim().toLowerCase();
+
+  if (t1 === t2) return 1;
+
+  const levenshtein = levenshteinSimilarity(t1, t2);
+  const jaccard = jaccardSimilarity(t1, t2);
+
+  const containsScore =
+    t1.includes(t2) || t2.includes(t1) ? 0.3 : 0;
+
+  return Math.min(
+    1,
+    levenshtein * 0.4 + jaccard * 0.4 + containsScore
+  );
+}
+
+export function findDuplicateCards(
+  targetTitle: string,
+  existingCards: Card[],
+  threshold: number = 0.6
+): DuplicateCandidate[] {
+  const candidates: DuplicateCandidate[] = [];
+
+  for (const card of existingCards) {
+    const similarity = calculateTitleSimilarity(targetTitle, card.title);
+    if (similarity >= threshold) {
+      candidates.push({
+        cardId: card.id,
+        cardTitle: card.title,
+        similarity: Math.round(similarity * 100) / 100,
+      });
+    }
+  }
+
+  return candidates.sort((a, b) => b.similarity - a.similarity).slice(0, 3);
 }

@@ -47,6 +47,27 @@ export interface ImportSource {
   suggestedLinks: string[];
 }
 
+export type DuplicateAction = 'import' | 'skip' | 'overwrite';
+
+export interface DuplicateCandidate {
+  cardId: string;
+  cardTitle: string;
+  similarity: number;
+}
+
+export interface ImportPreviewItem {
+  importSource: ImportSource;
+  selected: boolean;
+  duplicates: DuplicateCandidate[];
+  action: DuplicateAction;
+}
+
+export interface ImportPreviewResult {
+  items: ImportPreviewItem[];
+  totalCount: number;
+  duplicateCount: number;
+}
+
 export interface ReviewHistory {
   id: string;
   cardId: string;

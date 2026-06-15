@@ -19,6 +19,8 @@ import {
   KnowledgeSpace,
   RelationNode,
   CardRelations,
+  ImportPreviewResult,
+  ImportPreviewItem,
 } from '../types';
 import { db } from '../db';
 import {
@@ -36,6 +38,7 @@ import {
   createAchievement,
   generateWeeklyReport,
   formatWeeklyReportMarkdown,
+  findDuplicateCards,
 } from '../utils/algorithm';
 import { generateMockData } from '../utils/mockData';
 
@@ -89,6 +92,8 @@ interface StoreState {
   importBookmarks: (file: File) => Promise<ImportSource[]>;
   importAnnotations: (content: string) => Promise<ImportSource[]>;
   processImport: (importId: string, createCard: boolean) => Promise<void>;
+  getImportPreview: () => ImportPreviewResult;
+  batchProcessImports: (items: ImportPreviewItem[]) => Promise<{ created: number; skipped: number; overwritten: number }>;
 
   getGraphData: () => GraphData;
   getCardRelations: (cardId: string) => CardRelations;
@@ -660,6 +665,89 @@ export const useStore = create<StoreState>((set, get) => ({
 
     await db.importSources.update(importId, { processed: true });
     await get().loadAllData();
+  },
+
+  getImportPreview: () => {
+    const { importSources, cards } = get();
+    const pendingImports = importSources.filter((s) => !s.processed);
+
+    const items: ImportPreviewItem[] = pendingImports.map((source) => {
+      const duplicates = findDuplicateCards(source.title, cards, 0.6);
+      return {
+        importSource: source,
+        selected: true,
+        duplicates,
+        action: duplicates.length > 0 ? 'skip' : 'import',
+      };
+    });
+
+    const duplicateCount = items.filter((i) => i.duplicates.length > 0).length;
+
+    return {
+      items,
+      totalCount: items.length,
+      duplicateCount,
+    };
+  },
+
+  batchProcessImports: async (items) => {
+    let created = 0;
+    let skipped = 0;
+    let overwritten = 0;
+
+    const selectedItems = items.filter((i) => i.selected);
+
+    for (const item of selectedItems) {
+      const source = item.importSource;
+
+      if (item.action === 'skip') {
+        skipped++;
+        await db.importSources.update(source.id, { processed: true });
+        continue;
+      }
+
+      if (item.action === 'overwrite' && item.duplicates.length > 0) {
+        const existingCardId = item.duplicates[0].cardId;
+        const existingCard = await db.cards.get(existingCardId);
+        if (existingCard) {
+          const mergedContent = existingCard.content
+            ? `${existingCard.content}\n\n---\n\n${source.content}${source.url ? `\n\n来源: ${source.url}` : ''}`
+            : source.content + (source.url ? `\n\n来源: ${source.url}` : '');
+
+          await get().updateCard(existingCardId, {
+            title: source.title || existingCard.title,
+            content: mergedContent,
+          });
+
+          for (const suggestedCardId of source.suggestedLinks) {
+            if (suggestedCardId !== existingCardId) {
+              await get().createLink(existingCardId, suggestedCardId);
+            }
+          }
+
+          overwritten++;
+          await db.importSources.update(source.id, { processed: true });
+          continue;
+        }
+      }
+
+      if (item.action === 'import' || (item.action === 'overwrite' && item.duplicates.length === 0)) {
+        const newCard = await get().createCard({
+          title: source.title,
+          content: source.content + (source.url ? `\n\n来源: ${source.url}` : ''),
+        });
+
+        for (const suggestedCardId of source.suggestedLinks) {
+          await get().createLink(newCard.id, suggestedCardId);
+        }
+
+        created++;
+        await db.importSources.update(source.id, { processed: true });
+      }
+    }
+
+    await get().loadAllData();
+    return { created, skipped, overwritten };
   },
 
   getGraphData: () => {

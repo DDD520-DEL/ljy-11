@@ -40,6 +40,7 @@ import {
 import { useNotification } from '../hooks/useNotification';
 import { AchievementType } from '../types';
 import WeeklyReportModal from '../components/WeeklyReportModal';
+import DailyDiscovery from '../components/DailyDiscovery';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -362,53 +363,59 @@ export default function DashboardPage() {
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <motion.div variants={item} className="lg:col-span-2 glass-card p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-2xl font-bold text-white">
-              最近更新
-            </h2>
-            <button
-              onClick={() => navigate('/cards')}
-              className="text-sm text-amber-gold hover:text-amber-gold-light flex items-center gap-1 transition-colors"
-            >
-              查看全部 <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="space-y-3">
-            {recentCards.map((card, index) => (
-              <motion.div
-                key={card.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                onClick={() => navigate(`/cards/${card.id}`)}
-                className="glass-card-hover p-4 cursor-pointer flex items-center justify-between"
+        <div className="lg:col-span-2 space-y-6">
+          <motion.div variants={item}>
+            <DailyDiscovery />
+          </motion.div>
+
+          <motion.div variants={item} className="glass-card p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-display text-2xl font-bold text-white">
+                最近更新
+              </h2>
+              <button
+                onClick={() => navigate('/cards')}
+                className="text-sm text-amber-gold hover:text-amber-gold-light flex items-center gap-1 transition-colors"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-gold/20 to-amber-gold-light/20 flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-amber-gold" />
+                查看全部 <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              {recentCards.map((card, index) => (
+                <motion.div
+                  key={card.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  onClick={() => navigate(`/cards/${card.id}`)}
+                  className="glass-card-hover p-4 cursor-pointer flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-gold/20 to-amber-gold-light/20 flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-amber-gold" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-white">{card.title}</h3>
+                      <p className="text-xs text-white/50">
+                        {formatDistanceToNow(card.updatedAt, {
+                          addSuffix: true,
+                          locale: zhCN,
+                        })}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-medium text-white">{card.title}</h3>
-                    <p className="text-xs text-white/50">
-                      {formatDistanceToNow(card.updatedAt, {
-                        addSuffix: true,
-                        locale: zhCN,
-                      })}
-                    </p>
+                  <div className="flex gap-2">
+                    {card.tags.slice(0, 2).map((tag) => (
+                      <span key={tag} className="tag-chip">
+                        {tag}
+                      </span>
+                    ))}
                   </div>
-                </div>
-                <div className="flex gap-2">
-                  {card.tags.slice(0, 2).map((tag) => (
-                    <span key={tag} className="tag-chip">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
 
         <motion.div variants={item} className="space-y-6">
           <div className={`glass-card p-6 relative overflow-hidden ${
